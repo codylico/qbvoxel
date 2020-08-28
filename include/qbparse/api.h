@@ -25,6 +25,22 @@ extern "C" {
 QBParse_API
 char const* qbparse_api_version(void);
 
+/**
+ * @brief Extract an unsigned 32-bit integer from a byte array.
+ * @param b byte array
+ * @return the unsigned integer
+ */
+QBParse_API
+unsigned long int qbparse_api_from_u32(unsigned char const* b);
+
+/**
+ * @brief Encode an unsigned 32-bit integer to a byte array.
+ * @param b byte array
+ * @param v the unsigned integer
+ */
+QBParse_API
+void qbparse_api_to_u32(unsigned char* b, unsigned long int v);
+
 #if defined(__cplusplus)
 };
 #endif /*__cplusplus*/
