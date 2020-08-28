@@ -41,6 +41,22 @@ unsigned long int qbparse_api_from_u32(unsigned char const* b);
 QBParse_API
 void qbparse_api_to_u32(unsigned char* b, unsigned long int v);
 
+/**
+ * @brief Extract a signed 32-bit integer to a byte array.
+ * @param b byte array
+ * @return the signed integer
+ */
+QBParse_API
+long int qbparse_api_from_i32(unsigned char const* b);
+
+/**
+ * @brief Encode a signed 32-bit integer to a byte array.
+ * @param b byte array
+ * @param v the signed integer
+ */
+QBParse_API
+void qbparse_api_to_i32(unsigned char* b, long int v);
+
 #if defined(__cplusplus)
 };
 #endif /*__cplusplus*/

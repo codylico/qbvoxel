@@ -8,12 +8,14 @@ typedef int (*test_cb)(void*);
 
 static
 int test_u32(void*);
+static int test_i32(void*);
 
 static struct {
   char const* nm;
   test_cb cb;
 } const test_list[] = {
-  { "u32", test_u32 }
+  { "u32", test_u32 },
+  { "i32", test_i32 }
 };
 
 int test_u32(void* p) {
@@ -35,6 +37,30 @@ int test_u32(void* p) {
     if (memcmp(buf, enc, 4) != 0)
       return EXIT_FAILURE;
     if (qbparse_api_from_u32(enc) != v)
+      return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
+}
+
+int test_i32(void* p) {
+  static long int const values[] = {
+      7, 0x12345678, -0x1234568l
+    };
+  static unsigned char const value_enc[] = {
+      7, 0, 0, 0, 0x78, 0x56, 0x34, 0x12,
+      0x98, 0xBA, 0xDC, 0xFE
+    };
+  static size_t const count = sizeof(values)/sizeof(values[0]);
+  size_t i, j = 0;
+  (void)p;
+  for (i = 0, j = 0; i < count; ++i, j += 4) {
+    unsigned long int const v = values[i];
+    unsigned char const* const enc = value_enc+j;
+    unsigned char buf[4];
+    qbparse_api_to_i32(buf, v);
+    if (memcmp(buf, enc, 4) != 0)
+      return EXIT_FAILURE;
+    if (qbparse_api_from_i32(enc) != v)
       return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;

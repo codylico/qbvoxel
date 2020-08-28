@@ -4,6 +4,8 @@
  */
 #define QBParse_API_Impl
 #include "qbparse/api.h"
+#include <errno.h>
+#include <limits.h>
 
 char const* qbparse_api_version(void) {
   return "0.1";
@@ -24,5 +26,26 @@ void qbparse_api_to_u32(unsigned char* b, unsigned long int v) {
   b[1] = (unsigned char)((v>>8)&255);
   b[2] = (unsigned char)((v>>16)&255);
   b[3] = (unsigned char)((v>>24)&255);
+  return;
+}
+
+long int qbparse_api_from_i32(unsigned char const* b) {
+  /* assert little-endian, twos complement */
+  unsigned long int const xout = qbparse_api_from_u32(b);
+  if (xout >= 0x80000000ul) {
+    unsigned long int const out = (xout^0xFFffFFfflu)+1ul;
+    static unsigned long int const trap = (~(unsigned long int)(LONG_MIN))+1ul;
+    if (out == trap)
+      return LONG_MIN;
+    else if (out > trap) {
+      errno = ERANGE;
+      return LONG_MIN;
+    } else return -( (long int)(out) );
+  } else return (long int)xout;
+}
+
+void qbparse_api_to_i32(unsigned char* b, long int v) {
+  unsigned long int const xv = (unsigned long int)v;
+  qbparse_api_to_u32(b, xv);
   return;
 }
