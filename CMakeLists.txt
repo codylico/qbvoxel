@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.0)
-
 project(QBParse C)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
