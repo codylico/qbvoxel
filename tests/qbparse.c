@@ -6,8 +6,7 @@
 
 typedef int (*test_cb)(void*);
 
-static
-int test_u32(void*);
+static int test_u32(void*);
 static int test_i32(void*);
 static int test_lasterr(void*);
 
