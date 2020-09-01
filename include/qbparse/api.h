@@ -2,8 +2,8 @@
  * @file qbparse/api.h
  * @brief Base file for the Qubicle parser library
  */
-#if !defined(hg_QBParse_QBBase_h_)
-#define hg_QBParse_QBBase_h_
+#if !defined(hg_QBParse_api_h_)
+#define hg_QBParse_api_h_
 
 #if defined(_WIN32)
 #  if defined(QBParse_API_Impl)
@@ -61,4 +61,4 @@ void qbparse_api_to_i32(unsigned char* b, long int v);
 };
 #endif /*__cplusplus*/
 
-#endif /*hg_QBParse_QBBase_h_*/
+#endif /*hg_QBParse_api_h_*/
