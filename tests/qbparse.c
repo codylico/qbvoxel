@@ -9,13 +9,15 @@ typedef int (*test_cb)(void*);
 static
 int test_u32(void*);
 static int test_i32(void*);
+static int test_lasterr(void*);
 
 static struct {
   char const* nm;
   test_cb cb;
 } const test_list[] = {
   { "u32", test_u32 },
-  { "i32", test_i32 }
+  { "i32", test_i32 },
+  { "lasterr", test_lasterr }
 };
 
 int test_u32(void* p) {
@@ -63,6 +65,18 @@ int test_i32(void* p) {
     if (qbparse_api_from_i32(enc) != v)
       return EXIT_FAILURE;
   }
+  return EXIT_SUCCESS;
+}
+
+int test_lasterr(void* p) {
+  qbparse_state s;
+  (void)p;
+  s.last_error = 0;
+  if (qbparse_api_get_error(&s) != 0)
+    return EXIT_FAILURE;
+  s.last_error = 5;
+  if (qbparse_api_get_error(&s) == 0)
+    return EXIT_FAILURE;
   return EXIT_SUCCESS;
 }
 

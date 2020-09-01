@@ -19,6 +19,20 @@
 extern "C" {
 #endif /*__cplusplus*/
 
+typedef struct qbparse_state {
+  int last_error;
+  unsigned short state;
+  unsigned short pos;
+  unsigned long int i;
+  unsigned long int x;
+  unsigned long int y;
+  unsigned long int z;
+  unsigned long int width;
+  unsigned long int height;
+  unsigned long int depth;
+  unsigned char buffer[32];
+} qbparse_state;
+
 /**
  * @brief Get a version string.
  */
@@ -56,6 +70,14 @@ long int qbparse_api_from_i32(unsigned char const* b);
  */
 QBParse_API
 void qbparse_api_to_i32(unsigned char* b, long int v);
+
+/**
+ * @brief Query a state for the last error code.
+ * @param s the state structure to query
+ * @return zero if no error, nonzero otherwise
+ */
+QBParse_API
+int qbparse_api_get_error(struct qbparse_state const* s);
 
 #if defined(__cplusplus)
 };

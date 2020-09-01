@@ -49,3 +49,7 @@ void qbparse_api_to_i32(unsigned char* b, long int v) {
   qbparse_api_to_u32(b, xv);
   return;
 }
+
+int qbparse_api_get_error(struct qbparse_state const* s) {
+  return s->last_error;
+}
