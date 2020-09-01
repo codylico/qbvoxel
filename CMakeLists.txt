@@ -16,6 +16,7 @@ set(qbparse_SOURCES
 add_library(qbparse ${qbparse_HEADERS} ${qbparse_SOURCES})
 target_include_directories(qbparse PRIVATE include)
 
+#based on https://cliutils.gitlab.io/modern-cmake/chapters/testing.html
 if (QBParse_BUILD_TESTING AND BUILD_TESTING)
   add_executable(qbparse_test tests/qbparse.c)
   target_link_libraries(qbparse_test qbparse)
