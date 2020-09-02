@@ -19,9 +19,192 @@
 extern "C" {
 #endif /*__cplusplus*/
 
+/**
+ * @brief Error codes.
+ */
+enum qbparse_error {
+  /**
+   * @brief All good. (zero)
+   */
+  QBParse_Ok = 0,
+  /**
+   * @brief Version not supported.
+   */
+  QBParse_ErrVersion = 1,
+  /**
+   * @brief Color type not supported.
+   */
+  QBParse_ErrColorType = 2,
+  /**
+   * @brief Orientation not supported.
+   */
+  QBParse_ErrOrientation = 3,
+  /**
+   * @brief Mask format not supported.
+   */
+  QBParse_ErrMaskFormat = 4,
+  /**
+   * @brief Compression format not supported.
+   */
+  QBParse_ErrCompress = 5
+};
+
+/**
+ * @brief Flags for the state machine.
+ */
+enum qbparse_flags {
+  /**
+   * @b Set: Data encoded as BGRA; @b Clear: Data encoded as RGBA
+   */
+  QBParse_FlagBGRA = 1u,
+  /**
+   * @b Set: Right-handed coordinate system;
+   * @b Clear: Left-handed coordinate system
+   */
+  QBParse_FlagRightHand = 2u,
+  /**
+   * @b Set: Run length encoding of matrix data
+   * @b Clear: Direct storage of matrix data
+   */
+  QBParse_FlagRLE = 4u,
+  /**
+   * @b Set: Visibility masks encoded in alpha channel
+   * @b Clear: Alpha channel is either full opaque or full transparent
+   */
+  QBParse_FlagSideMasks = 8u
+};
+
+
+
+/**
+ * @brief Voxel information.
+ */
+typedef struct qbparse_voxel {
+    /**
+     * @brief Red channel.
+     */
+    unsigned char r;
+    /**
+     * @brief Green channel.
+     */
+    unsigned char g;
+    /**
+     * @brief Blue channel.
+     */
+    unsigned char b;
+    /**
+     * @brief Visibility information.
+     */
+    unsigned char a;
+} qbparse_voxel;
+
+/**
+ * @brief QBParse matrix information structure.
+ */
+typedef struct qbparse_matrix_info {
+  /**
+   * @brief Matrix name, `'\0'`-terminated.
+   */
+  char name[256];
+  /**
+   * @brief x-coordinate of matrix in space.
+   */
+  long int pos_x;
+  /**
+   * @brief y-coordinate of matrix in space.
+   */
+  long int pos_y;
+  /**
+   * @brief z-coordinate of matrix in space.
+   */
+  long int pos_z;
+  /**
+   * @brief Width of matrix in voxels.
+   */
+  unsigned long int size_x;
+  /**
+   * @brief Height of matrix in voxels.
+   */
+  unsigned long int size_y;
+  /**
+   * @brief Depth of matrix in voxels.
+   */
+  unsigned long int size_z;
+} qbparse_matrix_info;
+
+/**
+ * @brief QBParse interface
+ */
+typedef struct qbparse_i {
+  /**
+   * @brief Callback data.
+   */
+  void* p;
+  /**
+   * @brief Resize the voxel matrix store.
+   * @param p this instance
+   * @param n number of matrices
+   * @return 0 on success, nonzero otherwise
+   */
+  int (*resize)(void* p, unsigned long int n);
+  /**
+   * @brief Query the number of voxel matrices.
+   * @param p this instance
+   * @return a voxel matrix count
+   */
+  unsigned long int (*size)(void const* p);
+  /**
+   * @brief Query information for a matrix.
+   * @param p this instance
+   * @param i a matrix array index
+   * @param[out] mi matrix information structure to fill
+   * @return 0 on success, nonzero otherwise
+   */
+  int (*get_matrix)
+    (void const* p, unsigned long int i, struct qbparse_matrix_info *mi);
+  /**
+   * @brief Configure a matrix.
+   * @param p this instance
+   * @param i a matrix array index
+   * @param mi matrix information structure to use for configuration
+   * @return 0 on success, nonzero otherwise
+   */
+  int (*set_matrix)
+    (void* p, unsigned long int i, struct qbparse_matrix_info const* mi);
+  /**
+   * @brief Query information for a matrix.
+   * @param p this instance
+   * @param i a matrix array index
+   * @param x matrix-local x-coordinate
+   * @param y matrix-local y-coordinate
+   * @param z matrix-local z-coordinate
+   * @param[out] v voxel structure to receive channel data
+   * @return 0 on success, nonzero otherwise
+   */
+  int (*read_voxel)
+    ( void const* p, unsigned long int i,
+      unsigned long int x,unsigned long int y,unsigned long int z,
+      struct qbparse_voxel* v);
+  /**
+   * @brief Query information for a matrix.
+   * @param p this instance
+   * @param i a matrix array index
+   * @param x matrix-local x-coordinate
+   * @param y matrix-local y-coordinate
+   * @param z matrix-local z-coordinate
+   * @param v voxel structure providing channel data
+   * @return 0 on success, nonzero otherwise
+   */
+  int (*write_voxel)
+    ( void* p, unsigned long int i,
+      unsigned long int x,unsigned long int y,unsigned long int z,
+      struct qbparse_voxel const* v);
+} qbparse_i;
+
 typedef struct qbparse_state {
   int last_error;
-  unsigned short state;
+  unsigned char state;
+  unsigned char flags;
   unsigned short pos;
   unsigned long int i;
   unsigned long int x;
@@ -31,6 +214,7 @@ typedef struct qbparse_state {
   unsigned long int height;
   unsigned long int depth;
   unsigned char buffer[32];
+  struct qbparse_i* cb;
 } qbparse_state;
 
 /**
@@ -78,6 +262,8 @@ void qbparse_api_to_i32(unsigned char* b, long int v);
  */
 QBParse_API
 int qbparse_api_get_error(struct qbparse_state const* s);
+
+
 
 #if defined(__cplusplus)
 };

@@ -9,9 +9,11 @@ option(BUILD_TESTING "Build some tests" OFF)
 option(QBParse_BUILD_TESTING "Build tests for QBParse" OFF)
 
 set(qbparse_HEADERS
-  include/qbparse/api.h)
+  include/qbparse/api.h
+  include/qbparse/parse.h)
 set(qbparse_SOURCES
-  src/qbparse/api.c)
+  src/qbparse/api.c
+  src/qbparse/parse.c)
 
 add_library(qbparse ${qbparse_HEADERS} ${qbparse_SOURCES})
 target_include_directories(qbparse PRIVATE include)

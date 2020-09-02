@@ -6,6 +6,8 @@
 #include "qbparse/api.h"
 #include <errno.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <string.h>
 
 char const* qbparse_api_version(void) {
   return "0.1";
