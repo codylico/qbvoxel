@@ -40,6 +40,8 @@ static struct {
   { "u32", test_u32 },
   { "i32", test_i32 },
   { "lasterr", test_lasterr },
+  { "alloc", test_alloc },
+  { "allocstate", test_allocstate },
   { "parseinit", test_parseinit },
   { "header", test_header }
 };
@@ -101,6 +103,35 @@ int test_lasterr(void* p) {
   s.last_error = 5;
   if (qbparse_api_get_error(&s) == 0)
     return EXIT_FAILURE;
+  return EXIT_SUCCESS;
+}
+
+int test_alloc(void* q) {
+  (void)q;
+  /* */{
+    void* const p = qbparse_api_malloc(64);
+    if (p == NULL)
+      return EXIT_FAILURE;
+    qbparse_api_free(p);
+  }
+  /* */{
+    void* const p = qbparse_api_malloc(0);
+    if (p != NULL) {
+      qbparse_api_free(p);
+      return EXIT_FAILURE;
+    }
+  }
+  return EXIT_SUCCESS;
+}
+
+int test_allocstate(void* q) {
+  /* */{
+    qbparse_state* const p = qbparse_api_alloc_state();
+    if (p == NULL)
+      return EXIT_FAILURE;
+    p->cb = NULL;
+    qbparse_api_free(p);
+  }
   return EXIT_SUCCESS;
 }
 

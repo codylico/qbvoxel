@@ -55,3 +55,23 @@ void qbparse_api_to_i32(unsigned char* b, long int v) {
 int qbparse_api_get_error(struct qbparse_state const* s) {
   return s->last_error;
 }
+
+void* qbparse_api_malloc(unsigned int sz) {
+  if (sz == 0u || sz >= ((size_t)-1))
+    return NULL;
+  else return malloc(sz);
+}
+
+void qbparse_api_free(void* p) {
+  free(p);
+  return;
+}
+
+struct qbparse_state* qbparse_api_alloc_state(void) {
+  struct qbparse_state* q =
+    (struct qbparse_state*)qbparse_api_malloc(sizeof(struct qbparse_state));
+  if (q != NULL) {
+    memset(q, 0, sizeof(struct qbparse_state));
+    return q;
+  } else return NULL;
+}

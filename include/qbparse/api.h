@@ -263,6 +263,29 @@ void qbparse_api_to_i32(unsigned char* b, long int v);
 QBParse_API
 int qbparse_api_get_error(struct qbparse_state const* s);
 
+/**
+ * @brief Allocate some memory.
+ * @param sz number of bytes to allocate
+ * @return pointer to memory on success, NULL on failure
+ */
+QBParse_API
+void* qbparse_api_malloc(unsigned int sz);
+
+/**
+ * @brief Release some memory.
+ * @param p pointer to memory to free
+ */
+QBParse_API
+void qbparse_api_free(void* p);
+
+/**
+ * @brief Allocate enough memory for a single state.
+ * @param sz number of bytes to allocate
+ * @return pointer to memory on success, NULL on failure
+ * @note Release with `qbparse_api_free`.
+ */
+QBParse_API
+struct qbparse_state* qbparse_api_alloc_state(void);
 
 
 #if defined(__cplusplus)
