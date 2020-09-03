@@ -92,6 +92,9 @@ unsigned int qbparse_parse_do
           break;
         } else if (mask_format)
           s->flags |= QBParse_FlagSideMasks;
+        if (s->cb != NULL) {
+          s->last_error = (*s->cb->resize)(s->cb->p, matrix_count);
+        }
         s->state = 255u;
       } break;
     }

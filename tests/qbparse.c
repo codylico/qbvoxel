@@ -14,8 +14,32 @@ static int test_alloc(void*);
 static int test_allocstate(void*);
 static int test_parseinit(void*);
 static int test_header(void*);
+static int test_arrayresize(void*);
 static int test_flags(void*);
 
+struct cb_matrix {
+  unsigned int width, height, depth;
+  struct qbparse_voxel *data;
+};
+struct cb_matrix_array {
+  size_t count;
+  struct cb_matrix *matrices;
+};
+
+static int cb_resize(void* p, unsigned long int n);
+static unsigned long int cb_size(void const* p);
+static int cb_get_matrix
+  (void const* p, unsigned long int i, struct qbparse_matrix_info *mi);
+static int cb_set_matrix
+  (void* p, unsigned long int i, struct qbparse_matrix_info const* mi);
+static int cb_read_voxel
+  ( void const* p, unsigned long int i,
+    unsigned long int x,unsigned long int y,unsigned long int z,
+    struct qbparse_voxel* v);
+static int cb_write_voxel
+  ( void* p, unsigned long int i,
+    unsigned long int x,unsigned long int y,unsigned long int z,
+    struct qbparse_voxel const* v);
 
 /* sample Qubicle file */
 static unsigned char const three_qb[] = {
@@ -46,6 +70,7 @@ static struct {
   { "allocstate", test_allocstate },
   { "parseinit", test_parseinit },
   { "header", test_header },
+  { "arrayresize", test_arrayresize },
   { "flags", test_flags }
 };
 
@@ -174,6 +199,31 @@ int test_header(void* q) {
   return EXIT_SUCCESS;
 }
 
+int test_arrayresize(void* q) {
+  struct qbparse_i* const qi = (struct qbparse_i *)q;
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)(qi->p);
+  unsigned int const len = (unsigned int)sizeof(three_qb);
+  qbparse_state st;
+  if (len < 24)
+    return EXIT_FAILURE;
+  qbparse_parse_init(&st, qi);
+  /* parse the header */{
+    if (qbparse_parse_do(&st, 24, three_qb) != 24) {
+      qbparse_parse_clear(&st);
+      return EXIT_FAILURE;
+    }
+    if (qbparse_api_get_error(&st) != 0) {
+      qbparse_parse_clear(&st);
+      return EXIT_FAILURE;
+    }
+    if (qma->count != 1) {
+      qbparse_parse_clear(&st);
+      return EXIT_FAILURE;
+    }
+  }
+  qbparse_parse_clear(&st);
+  return EXIT_SUCCESS;
+}
 
 int test_flags(void* p) {
   qbparse_state s;
@@ -190,15 +240,74 @@ int test_flags(void* p) {
 
 
 
+int cb_resize(void* p, unsigned long int n) {
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)p;
+  /* free the old ones */{
+    unsigned int i;
+    for (i = 0; i < qma->count; ++i) {
+      free(qma->matrices[i].data);
+    }
+    free(qma->matrices);
+    qma->matrices = NULL;
+    qma->count = 0;
+  }
+  /* make the new ones */if (n > 0) {
+    struct cb_matrix *mx = (struct cb_matrix*)calloc
+        (n, sizeof(struct cb_matrix));
+    if (mx == NULL)
+      return -1;
+    else {
+      qma->matrices = mx;
+      qma->count = n;
+    }
+  }
+  return 0;
+}
+unsigned long int cb_size(void const* p) {
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)p;
+  return qma->count;
+}
+int cb_get_matrix
+  (void const* p, unsigned long int i, struct qbparse_matrix_info *mi)
+{
+  return -1;
+}
+int cb_set_matrix
+  (void* p, unsigned long int i, struct qbparse_matrix_info const* mi)
+{
+  return -1;
+}
+int cb_read_voxel
+  ( void const* p, unsigned long int i,
+    unsigned long int x,unsigned long int y,unsigned long int z,
+    struct qbparse_voxel* v)
+{
+  return -1;
+}
+int cb_write_voxel
+  ( void* p, unsigned long int i,
+    unsigned long int x,unsigned long int y,unsigned long int z,
+    struct qbparse_voxel const* v)
+{
+  return -1;
+}
+
+
+
+
 
 int main(int argc, char **argv) {
   size_t const test_count = sizeof(test_list)/sizeof(test_list[0]);
   size_t test_i;
   int total_res = EXIT_SUCCESS;
-  void* p = NULL;
+  struct cb_matrix_array qma = {0};
+  struct qbparse_i p = {
+      &qma, cb_resize, cb_size, cb_get_matrix, cb_set_matrix,
+      cb_read_voxel, cb_write_voxel
+    };
   fprintf(stderr,"1..%u\n", (unsigned int)test_count);
   for (test_i = 0; test_i < test_count; ++test_i) {
-    int const res = test_list[test_i].cb(p);
+    int const res = test_list[test_i].cb(&p);
     char const* result_text;
     if (res != EXIT_SUCCESS && res != 0) {
       total_res = EXIT_FAILURE;
@@ -207,5 +316,6 @@ int main(int argc, char **argv) {
     fprintf(stderr, "%s %u %s\n",
       result_text, ((unsigned int)(test_i+1)), test_list[test_i].nm);
   }
+  cb_resize(&qma,0);
   return total_res;
 }
