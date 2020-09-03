@@ -48,6 +48,9 @@ unsigned int qbparse_parse_do
 {
   /* states:
    * 0    - header
+   * 1    - matrix name length
+   * 2    - matrix name
+   * 3    - matrix bounds
    * 255  - end of stream
    */
   unsigned int i;
@@ -97,6 +100,52 @@ unsigned int qbparse_parse_do
         if (s->cb != NULL) {
           s->last_error = (*s->cb->resize)(s->cb->p, matrix_count);
         }
+        s->i = 0u;
+        s->state = (s->i >= matrix_count) ? 255u : 1u;
+      } break;
+    case 1:
+      /* matrix name length */{
+        s->z = buf[i]&255u;
+        s->pos = 0u;
+        s->name_buffer[0] = '\0';
+        s->state = (s->z > 0) ? 2 : 3;
+      } break;
+    case 2:
+      /* matrix name */if (s->pos < s->z) {
+        s->name_buffer[s->pos] = buf[i];
+        s->pos += 1;
+      }
+      if (s->pos >= s->z) {
+        s->name_buffer[s->z] = '\0';
+        s->pos = 0u;
+        s->state = 3;
+      } break;
+    case 3:
+      /* matrix bounds */if (s->pos < 24u) {
+        s->buffer[s->pos] = buf[i];
+        s->pos += 1u;
+      }
+      if (s->pos >= 24u) {
+        struct qbparse_matrix_info mi = {
+            {0},
+            /* pos_x */qbparse_api_from_i32(s->buffer+12),
+            /* pos_y */qbparse_api_from_i32(s->buffer+16),
+            /* pos_z */qbparse_api_from_i32(s->buffer+20),
+            /* size_x */qbparse_api_from_u32(s->buffer+0),
+            /* size_y */qbparse_api_from_u32(s->buffer+4),
+            /* size_z */qbparse_api_from_u32(s->buffer+8)
+          };
+        s->width = mi.size_x;
+        s->height = mi.size_y;
+        s->depth = mi.size_z;
+        s->x = 0;
+        s->y = 0;
+        s->z = 0;
+        memcpy(mi.name, s->name_buffer, 256*sizeof(char));
+        if (s->cb != NULL) {
+          s->last_error = (*s->cb->set_matrix)(s->cb->p, s->i, &mi);
+        }
+        s->pos = 0u;
         s->state = 255u;
       } break;
     }
