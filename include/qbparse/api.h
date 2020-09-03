@@ -226,6 +226,7 @@ typedef struct qbparse_state {
   unsigned long int depth;
   unsigned char buffer[32];
   struct qbparse_i* cb;
+  unsigned char name_buffer[256];
 } qbparse_state;
 
 /**

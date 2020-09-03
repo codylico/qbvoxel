@@ -21,6 +21,7 @@ int qbparse_parse_init(struct qbparse_state *s, struct qbparse_i* cb) {
   s->depth = 0u;
   memset(s->buffer, 0, sizeof(unsigned char)*32);
   s->cb = cb;
+  memset(s->name_buffer, 0, sizeof(unsigned char)*256);
   return 0;
 }
 
@@ -38,6 +39,7 @@ void qbparse_parse_clear(struct qbparse_state *s) {
   s->depth = 0u;
   memset(s->buffer, 0, sizeof(unsigned char)*32);
   s->cb = NULL;
+  memset(s->name_buffer, 0, sizeof(unsigned char)*256);
   return;
 }
 
