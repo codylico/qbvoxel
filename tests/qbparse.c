@@ -17,6 +17,7 @@ static int test_header(void*);
 static int test_arrayresize(void*);
 static int test_flags(void*);
 static int test_addmatrix(void*);
+static int test_fillmatrix(void*);
 
 struct cb_matrix {
   unsigned int width, height, depth;
@@ -75,7 +76,8 @@ static struct {
   { "header", test_header },
   { "arrayresize", test_arrayresize },
   { "flags", test_flags },
-  { "addmatrix", test_addmatrix}
+  { "addmatrix", test_addmatrix},
+  { "fillmatrix", test_fillmatrix}
 };
 
 int test_u32(void* p) {
@@ -277,6 +279,45 @@ int test_addmatrix(void* q) {
   return res;
 }
 
+int test_fillmatrix(void* q) {
+  struct qbparse_i* const qi = (struct qbparse_i *)q;
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)(qi->p);
+  unsigned int const len = (unsigned int)sizeof(three_qb);
+  qbparse_state st;
+  int res = EXIT_FAILURE;
+  qbparse_parse_init(&st, qi);
+  /* parse the header */do {
+    if (len < 164)
+      break;
+    if (qbparse_parse_do(&st, 164, three_qb) != 164)
+      break;
+    if (qbparse_api_get_error(&st) != 0)
+      break;
+    if (qma->count != 1)
+      break;
+    if (qma->matrices[0].data == NULL)
+      break;
+    /* */{
+      struct qbparse_voxel const vxl1 = { 50, 60, 57, 255 };
+      if (memcmp(qma->matrices[0].data+0, &vxl1, sizeof(qbparse_voxel)) != 0)
+        break;
+    }
+    /* */{
+      struct qbparse_voxel const vxl2 = { 106, 190, 48, 255 };
+      if (memcmp(qma->matrices[0].data+26, &vxl2, sizeof(qbparse_voxel)) != 0)
+        break;
+      if (memcmp(qma->matrices[0].data+24, &vxl2, sizeof(qbparse_voxel)) != 0)
+        break;
+      if (memcmp(qma->matrices[0].data+6, &vxl2, sizeof(qbparse_voxel)) != 0)
+        break;
+    }
+    res = EXIT_SUCCESS;
+  } while (0);
+  qbparse_parse_clear(&st);
+  return res;
+}
+
+
 
 
 
@@ -359,14 +400,32 @@ int cb_read_voxel
     unsigned long int x,unsigned long int y,unsigned long int z,
     struct qbparse_voxel* v)
 {
-  return -1;
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)p;
+  if (i >= qma->count)
+    return QBParse_ErrOutOfRange;
+  else {
+    struct cb_matrix* const m = qma->matrices+i;
+    if (x >= m->width || y >= m->height || z >= m->depth)
+      return QBParse_ErrOutOfRange;
+    *v = m->data[x + (y + z*m->height)*m->width];
+    return 0;
+  }
 }
 int cb_write_voxel
   ( void* p, unsigned long int i,
     unsigned long int x,unsigned long int y,unsigned long int z,
     struct qbparse_voxel const* v)
 {
-  return -1;
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)p;
+  if (i >= qma->count)
+    return QBParse_ErrOutOfRange;
+  else {
+    struct cb_matrix* const m = qma->matrices+i;
+    if (x >= m->width || y >= m->height || z >= m->depth)
+      return QBParse_ErrOutOfRange;
+    m->data[x + (y + z*m->height)*m->width] = *v;
+    return 0;
+  }
 }
 
 

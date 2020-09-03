@@ -51,6 +51,7 @@ unsigned int qbparse_parse_do
    * 1    - matrix name length
    * 2    - matrix name
    * 3    - matrix bounds
+   * 4    - uncompressed matrix data
    * 255  - end of stream
    */
   unsigned int i;
@@ -101,6 +102,9 @@ unsigned int qbparse_parse_do
           s->last_error = (*s->cb->resize)(s->cb->p, matrix_count);
         }
         s->i = 0u;
+        /* save the matrix size */{
+          memmove(s->buffer+24, s->buffer+20, 4);
+        }
         s->state = (s->i >= matrix_count) ? 255u : 1u;
       } break;
     case 1:
@@ -146,7 +150,46 @@ unsigned int qbparse_parse_do
           s->last_error = (*s->cb->set_matrix)(s->cb->p, s->i, &mi);
         }
         s->pos = 0u;
-        s->state = 255u;
+        s->state = (s->flags & QBParse_FlagRLE) ? 5u : 4u;
+      } break;
+    case 4: /* uncompressed matrix data */
+      if (s->pos < 4u) {
+        s->buffer[s->pos] = buf[i];
+        s->pos += 1u;
+      }
+      if (s->pos >= 4u) {
+        s->pos = 0u;
+        if (s->cb != NULL) {
+          if (s->flags & QBParse_FlagBGRA) {
+            struct qbparse_voxel const bgra = {
+                s->buffer[2], s->buffer[1], s->buffer[0], s->buffer[3]
+              };
+            s->last_error = (*s->cb->write_voxel)(
+              s->cb->p, s->i, s->x, s->y, s->z, &bgra);
+          } else /*RGBA */{
+            struct qbparse_voxel const rgba = {
+                s->buffer[0], s->buffer[1], s->buffer[2], s->buffer[3]
+              };
+            s->last_error = (*s->cb->write_voxel)(
+              s->cb->p, s->i, s->x, s->y, s->z, &rgba);
+          }
+        }
+        s->x += 1u;
+      }
+      if (s->x >= s->width) {
+        s->x = 0u;
+        s->y += 1u;
+      }
+      if (s->y >= s->height) {
+        s->y = 0u;
+        s->z += 1u;
+      }
+      if (s->z >= s->depth) {
+        /* go to next matrix, or done if this was the last matrix */
+        unsigned long int const matrix_count =
+          qbparse_api_from_u32(s->buffer+24);
+        s->i += 1u;
+        s->state = (s->i >= matrix_count) ? 255u : 1u;
       } break;
     }
   }
