@@ -46,7 +46,15 @@ enum qbparse_error {
   /**
    * @brief Compression format not supported.
    */
-  QBParse_ErrCompress = 5
+  QBParse_ErrCompress = 5,
+  /**
+   * @brief Index out of range.
+   */
+  QBParse_ErrOutOfRange = 6,
+  /**
+   * @brief Out of memory.
+   */
+  QBParse_ErrMemory = 7
 };
 
 /**
