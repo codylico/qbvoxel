@@ -201,6 +201,9 @@ typedef struct qbparse_i {
       struct qbparse_voxel const* v);
 } qbparse_i;
 
+/**
+ * @brief Parser/generator state.
+ */
 typedef struct qbparse_state {
   int last_error;
   unsigned char state;
