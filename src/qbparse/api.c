@@ -75,3 +75,12 @@ struct qbparse_state* qbparse_api_alloc_state(void) {
     return q;
   } else return NULL;
 }
+
+unsigned int qbparse_api_get_flags(struct qbparse_state const* s) {
+  return s->flags;
+}
+
+void qbparse_api_set_flags(struct qbparse_state* s, unsigned int f) {
+  s->flags = (f&15);
+  return;
+}

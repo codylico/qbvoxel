@@ -290,6 +290,22 @@ void qbparse_api_free(void* p);
 QBParse_API
 struct qbparse_state* qbparse_api_alloc_state(void);
 
+/**
+ * @brief Query a state for the encode flags.
+ * @param s the state structure to query
+ * @return encode flags
+ */
+QBParse_API
+unsigned int qbparse_api_get_flags(struct qbparse_state const* s);
+
+/**
+ * @brief Query a state for the encode flags.
+ * @param s the state structure to query
+ * @param f encode flags
+ */
+QBParse_API
+void qbparse_api_set_flags(struct qbparse_state* s, unsigned int f);
+
 
 #if defined(__cplusplus)
 };

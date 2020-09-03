@@ -14,6 +14,8 @@ static int test_alloc(void*);
 static int test_allocstate(void*);
 static int test_parseinit(void*);
 static int test_header(void*);
+static int test_flags(void*);
+
 
 /* sample Qubicle file */
 static unsigned char const three_qb[] = {
@@ -43,7 +45,8 @@ static struct {
   { "alloc", test_alloc },
   { "allocstate", test_allocstate },
   { "parseinit", test_parseinit },
-  { "header", test_header }
+  { "header", test_header },
+  { "flags", test_flags }
 };
 
 int test_u32(void* p) {
@@ -170,6 +173,22 @@ int test_header(void* q) {
   qbparse_parse_clear(&st);
   return EXIT_SUCCESS;
 }
+
+
+int test_flags(void* p) {
+  qbparse_state s;
+  (void)p;
+  qbparse_api_set_flags(&s, 15);
+  if (s.flags != 15)
+    return EXIT_FAILURE;
+  s.flags = 4;
+  if (qbparse_api_get_flags(&s) != 4)
+    return EXIT_FAILURE;
+  return EXIT_SUCCESS;
+}
+
+
+
 
 
 int main(int argc, char **argv) {
