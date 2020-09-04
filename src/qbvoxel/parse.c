@@ -1,13 +1,13 @@
 /**
- * @file qbparse/api.c
+ * @file qbvoxel/api.c
  * @brief Base file for the Qubicle parser library
  */
-#define QBParse_API_Impl
-#include "qbparse/parse.h"
+#define QBVoxel_API_Impl
+#include "qbvoxel/parse.h"
 #include <string.h>
 #include <stddef.h>
 
-int qbparse_parse_init(struct qbparse_state *s, struct qbparse_i* cb) {
+int qbvoxel_parse_init(struct qbvoxel_state *s, struct qbvoxel_i* cb) {
   s->last_error = 0;
   s->state = 0u;
   s->flags = 0u;
@@ -25,7 +25,7 @@ int qbparse_parse_init(struct qbparse_state *s, struct qbparse_i* cb) {
   return 0;
 }
 
-void qbparse_parse_clear(struct qbparse_state *s) {
+void qbvoxel_parse_clear(struct qbvoxel_state *s) {
   s->last_error = 0;
   s->state = 0u;
   s->flags = 0u;
@@ -43,8 +43,8 @@ void qbparse_parse_clear(struct qbparse_state *s) {
   return;
 }
 
-unsigned int qbparse_parse_do
-  (struct qbparse_state *s, unsigned int sz, unsigned char const* buf)
+unsigned int qbvoxel_parse_do
+  (struct qbvoxel_state *s, unsigned int sz, unsigned char const* buf)
 {
   /* states:
    * 0    - header
@@ -66,38 +66,38 @@ unsigned int qbparse_parse_do
       }
       if (s->pos >= 24u) {
         static unsigned char const version_text[4] = { 1u, 1u, 0u, 0u };
-        unsigned long int const color_type = qbparse_api_from_u32(s->buffer+4);
-        unsigned long int const orient = qbparse_api_from_u32(s->buffer+8);
-        unsigned long int const compress = qbparse_api_from_u32(s->buffer+12);
+        unsigned long int const color_type = qbvoxel_api_from_u32(s->buffer+4);
+        unsigned long int const orient = qbvoxel_api_from_u32(s->buffer+8);
+        unsigned long int const compress = qbvoxel_api_from_u32(s->buffer+12);
         unsigned long int const mask_format =
-          qbparse_api_from_u32(s->buffer+16);
+          qbvoxel_api_from_u32(s->buffer+16);
         unsigned long int const matrix_count =
-          qbparse_api_from_u32(s->buffer+20);
+          qbvoxel_api_from_u32(s->buffer+20);
         s->flags = 0u;
         if (memcmp(version_text, s->buffer, 4) != 0) {
-          s->last_error = QBParse_ErrVersion;
+          s->last_error = QBVoxel_ErrVersion;
           break;
         }
         if (color_type >= 2u) {
-          s->last_error = QBParse_ErrColorType;
+          s->last_error = QBVoxel_ErrColorType;
           break;
         } else if (color_type)
-          s->flags |= QBParse_FlagBGRA;
+          s->flags |= QBVoxel_FlagBGRA;
         if (orient >= 2u) {
-          s->last_error = QBParse_ErrOrientation;
+          s->last_error = QBVoxel_ErrOrientation;
           break;
         } else if (orient)
-          s->flags |= QBParse_FlagRightHand;
+          s->flags |= QBVoxel_FlagRightHand;
         if (compress >= 2u) {
-          s->last_error = QBParse_ErrCompress;
+          s->last_error = QBVoxel_ErrCompress;
           break;
         } else if (compress)
-          s->flags |= QBParse_FlagRLE;
+          s->flags |= QBVoxel_FlagRLE;
         if (mask_format >= 2u) {
-          s->last_error = QBParse_ErrMaskFormat;
+          s->last_error = QBVoxel_ErrMaskFormat;
           break;
         } else if (mask_format)
-          s->flags |= QBParse_FlagSideMasks;
+          s->flags |= QBVoxel_FlagSideMasks;
         if (s->cb != NULL) {
           s->last_error = (*s->cb->resize)(s->cb->p, matrix_count);
         }
@@ -130,14 +130,14 @@ unsigned int qbparse_parse_do
         s->pos += 1u;
       }
       if (s->pos >= 24u) {
-        struct qbparse_matrix_info mi = {
+        struct qbvoxel_matrix_info mi = {
             {0},
-            /* pos_x */qbparse_api_from_i32(s->buffer+12),
-            /* pos_y */qbparse_api_from_i32(s->buffer+16),
-            /* pos_z */qbparse_api_from_i32(s->buffer+20),
-            /* size_x */qbparse_api_from_u32(s->buffer+0),
-            /* size_y */qbparse_api_from_u32(s->buffer+4),
-            /* size_z */qbparse_api_from_u32(s->buffer+8)
+            /* pos_x */qbvoxel_api_from_i32(s->buffer+12),
+            /* pos_y */qbvoxel_api_from_i32(s->buffer+16),
+            /* pos_z */qbvoxel_api_from_i32(s->buffer+20),
+            /* size_x */qbvoxel_api_from_u32(s->buffer+0),
+            /* size_y */qbvoxel_api_from_u32(s->buffer+4),
+            /* size_z */qbvoxel_api_from_u32(s->buffer+8)
           };
         s->width = mi.size_x;
         s->height = mi.size_y;
@@ -150,7 +150,7 @@ unsigned int qbparse_parse_do
           s->last_error = (*s->cb->set_matrix)(s->cb->p, s->i, &mi);
         }
         s->pos = 0u;
-        s->state = (s->flags & QBParse_FlagRLE) ? 5u : 4u;
+        s->state = (s->flags & QBVoxel_FlagRLE) ? 5u : 4u;
       } break;
     case 4: /* uncompressed matrix data */
       if (s->pos < 4u) {
@@ -160,14 +160,14 @@ unsigned int qbparse_parse_do
       if (s->pos >= 4u) {
         s->pos = 0u;
         if (s->cb != NULL) {
-          if (s->flags & QBParse_FlagBGRA) {
-            struct qbparse_voxel const bgra = {
+          if (s->flags & QBVoxel_FlagBGRA) {
+            struct qbvoxel_voxel const bgra = {
                 s->buffer[2], s->buffer[1], s->buffer[0], s->buffer[3]
               };
             s->last_error = (*s->cb->write_voxel)(
               s->cb->p, s->i, s->x, s->y, s->z, &bgra);
           } else /*RGBA */{
-            struct qbparse_voxel const rgba = {
+            struct qbvoxel_voxel const rgba = {
                 s->buffer[0], s->buffer[1], s->buffer[2], s->buffer[3]
               };
             s->last_error = (*s->cb->write_voxel)(
@@ -187,7 +187,7 @@ unsigned int qbparse_parse_do
       if (s->z >= s->depth) {
         /* go to next matrix, or done if this was the last matrix */
         unsigned long int const matrix_count =
-          qbparse_api_from_u32(s->buffer+24);
+          qbvoxel_api_from_u32(s->buffer+24);
         s->i += 1u;
         s->state = (s->i >= matrix_count) ? 255u : 1u;
       } break;

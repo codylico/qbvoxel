@@ -1,27 +1,27 @@
 cmake_minimum_required(VERSION 3.0)
-project(QBParse C)
+project(QBVoxel C)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   include(CTest)
 endif (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
 option(BUILD_TESTING "Build some tests" OFF)
-option(QBParse_BUILD_TESTING "Build tests for QBParse" OFF)
+option(QBVoxel_BUILD_TESTING "Build tests for QBVoxel" OFF)
 
-set(qbparse_HEADERS
-  include/qbparse/api.h
-  include/qbparse/parse.h)
-set(qbparse_SOURCES
-  src/qbparse/api.c
-  src/qbparse/parse.c)
+set(qbvoxel_HEADERS
+  include/qbvoxel/api.h
+  include/qbvoxel/parse.h)
+set(qbvoxel_SOURCES
+  src/qbvoxel/api.c
+  src/qbvoxel/parse.c)
 
-add_library(qbparse ${qbparse_HEADERS} ${qbparse_SOURCES})
-target_include_directories(qbparse PRIVATE include)
+add_library(qbvoxel ${qbvoxel_HEADERS} ${qbvoxel_SOURCES})
+target_include_directories(qbvoxel PRIVATE include)
 
 #based on https://cliutils.gitlab.io/modern-cmake/chapters/testing.html
-if (QBParse_BUILD_TESTING AND BUILD_TESTING)
-  add_executable(qbparse_test tests/qbparse.c)
-  target_link_libraries(qbparse_test qbparse)
-  target_include_directories(qbparse_test PRIVATE include)
-  add_test(NAME qbparse_test COMMAND qbparse_test)
-endif (QBParse_BUILD_TESTING AND BUILD_TESTING)
+if (QBVoxel_BUILD_TESTING AND BUILD_TESTING)
+  add_executable(qbvoxel_test tests/qbvoxel.c)
+  target_link_libraries(qbvoxel_test qbvoxel)
+  target_include_directories(qbvoxel_test PRIVATE include)
+  add_test(NAME qbvoxel_test COMMAND qbvoxel_test)
+endif (QBVoxel_BUILD_TESTING AND BUILD_TESTING)

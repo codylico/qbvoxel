@@ -1,18 +1,18 @@
 /**
- * @file qbparse/api.h
+ * @file qbvoxel/api.h
  * @brief Base file for the Qubicle parser library
  */
-#if !defined(hg_QBParse_api_h_)
-#define hg_QBParse_api_h_
+#if !defined(hg_QBVoxel_api_h_)
+#define hg_QBVoxel_api_h_
 
 #if defined(_WIN32)
-#  if defined(QBParse_API_Impl)
-#    define QBParse_API __declspec(dllexport)
+#  if defined(QBVoxel_API_Impl)
+#    define QBVoxel_API __declspec(dllexport)
 #  else
-#    define QBParse_API __declspec(dllimport)
-#  endif /*QBParse_API_Impl*/
+#    define QBVoxel_API __declspec(dllimport)
+#  endif /*QBVoxel_API_Impl*/
 #else
-#  define QBParse_API
+#  define QBVoxel_API
 #endif /*_WIN32*/
 
 #if defined(__cplusplus)
@@ -22,64 +22,64 @@ extern "C" {
 /**
  * @brief Error codes.
  */
-enum qbparse_error {
+enum qbvoxel_error {
   /**
    * @brief All good. (zero)
    */
-  QBParse_Ok = 0,
+  QBVoxel_Ok = 0,
   /**
    * @brief Version not supported.
    */
-  QBParse_ErrVersion = 1,
+  QBVoxel_ErrVersion = 1,
   /**
    * @brief Color type not supported.
    */
-  QBParse_ErrColorType = 2,
+  QBVoxel_ErrColorType = 2,
   /**
    * @brief Orientation not supported.
    */
-  QBParse_ErrOrientation = 3,
+  QBVoxel_ErrOrientation = 3,
   /**
    * @brief Mask format not supported.
    */
-  QBParse_ErrMaskFormat = 4,
+  QBVoxel_ErrMaskFormat = 4,
   /**
    * @brief Compression format not supported.
    */
-  QBParse_ErrCompress = 5,
+  QBVoxel_ErrCompress = 5,
   /**
    * @brief Index out of range.
    */
-  QBParse_ErrOutOfRange = 6,
+  QBVoxel_ErrOutOfRange = 6,
   /**
    * @brief Out of memory.
    */
-  QBParse_ErrMemory = 7
+  QBVoxel_ErrMemory = 7
 };
 
 /**
  * @brief Flags for the state machine.
  */
-enum qbparse_flags {
+enum qbvoxel_flags {
   /**
    * @b Set: Data encoded as BGRA; @b Clear: Data encoded as RGBA
    */
-  QBParse_FlagBGRA = 1u,
+  QBVoxel_FlagBGRA = 1u,
   /**
    * @b Set: Right-handed coordinate system;
    * @b Clear: Left-handed coordinate system
    */
-  QBParse_FlagRightHand = 2u,
+  QBVoxel_FlagRightHand = 2u,
   /**
    * @b Set: Run length encoding of matrix data
    * @b Clear: Direct storage of matrix data
    */
-  QBParse_FlagRLE = 4u,
+  QBVoxel_FlagRLE = 4u,
   /**
    * @b Set: Visibility masks encoded in alpha channel
    * @b Clear: Alpha channel is either full opaque or full transparent
    */
-  QBParse_FlagSideMasks = 8u
+  QBVoxel_FlagSideMasks = 8u
 };
 
 
@@ -87,7 +87,7 @@ enum qbparse_flags {
 /**
  * @brief Voxel information.
  */
-typedef struct qbparse_voxel {
+typedef struct qbvoxel_voxel {
     /**
      * @brief Red channel.
      */
@@ -104,12 +104,12 @@ typedef struct qbparse_voxel {
      * @brief Visibility information.
      */
     unsigned char a;
-} qbparse_voxel;
+} qbvoxel_voxel;
 
 /**
- * @brief QBParse matrix information structure.
+ * @brief QBVoxel matrix information structure.
  */
-typedef struct qbparse_matrix_info {
+typedef struct qbvoxel_matrix_info {
   /**
    * @brief Matrix name, `'\0'`-terminated.
    */
@@ -138,12 +138,12 @@ typedef struct qbparse_matrix_info {
    * @brief Depth of matrix in voxels.
    */
   unsigned long int size_z;
-} qbparse_matrix_info;
+} qbvoxel_matrix_info;
 
 /**
- * @brief QBParse interface
+ * @brief QBVoxel interface
  */
-typedef struct qbparse_i {
+typedef struct qbvoxel_i {
   /**
    * @brief Callback data.
    */
@@ -169,7 +169,7 @@ typedef struct qbparse_i {
    * @return 0 on success, nonzero otherwise
    */
   int (*get_matrix)
-    (void const* p, unsigned long int i, struct qbparse_matrix_info *mi);
+    (void const* p, unsigned long int i, struct qbvoxel_matrix_info *mi);
   /**
    * @brief Configure a matrix.
    * @param p this instance
@@ -178,7 +178,7 @@ typedef struct qbparse_i {
    * @return 0 on success, nonzero otherwise
    */
   int (*set_matrix)
-    (void* p, unsigned long int i, struct qbparse_matrix_info const* mi);
+    (void* p, unsigned long int i, struct qbvoxel_matrix_info const* mi);
   /**
    * @brief Query information for a matrix.
    * @param p this instance
@@ -192,7 +192,7 @@ typedef struct qbparse_i {
   int (*read_voxel)
     ( void const* p, unsigned long int i,
       unsigned long int x,unsigned long int y,unsigned long int z,
-      struct qbparse_voxel* v);
+      struct qbvoxel_voxel* v);
   /**
    * @brief Query information for a matrix.
    * @param p this instance
@@ -206,13 +206,13 @@ typedef struct qbparse_i {
   int (*write_voxel)
     ( void* p, unsigned long int i,
       unsigned long int x,unsigned long int y,unsigned long int z,
-      struct qbparse_voxel const* v);
-} qbparse_i;
+      struct qbvoxel_voxel const* v);
+} qbvoxel_i;
 
 /**
  * @brief Parser/generator state.
  */
-typedef struct qbparse_state {
+typedef struct qbvoxel_state {
   int last_error;
   unsigned char state;
   unsigned char flags;
@@ -225,99 +225,99 @@ typedef struct qbparse_state {
   unsigned long int height;
   unsigned long int depth;
   unsigned char buffer[32];
-  struct qbparse_i* cb;
+  struct qbvoxel_i* cb;
   unsigned char name_buffer[256];
-} qbparse_state;
+} qbvoxel_state;
 
 /**
  * @brief Get a version string.
  */
-QBParse_API
-char const* qbparse_api_version(void);
+QBVoxel_API
+char const* qbvoxel_api_version(void);
 
 /**
  * @brief Extract an unsigned 32-bit integer from a byte array.
  * @param b byte array
  * @return the unsigned integer
  */
-QBParse_API
-unsigned long int qbparse_api_from_u32(unsigned char const* b);
+QBVoxel_API
+unsigned long int qbvoxel_api_from_u32(unsigned char const* b);
 
 /**
  * @brief Encode an unsigned 32-bit integer to a byte array.
  * @param b byte array
  * @param v the unsigned integer
  */
-QBParse_API
-void qbparse_api_to_u32(unsigned char* b, unsigned long int v);
+QBVoxel_API
+void qbvoxel_api_to_u32(unsigned char* b, unsigned long int v);
 
 /**
  * @brief Extract a signed 32-bit integer to a byte array.
  * @param b byte array
  * @return the signed integer
  */
-QBParse_API
-long int qbparse_api_from_i32(unsigned char const* b);
+QBVoxel_API
+long int qbvoxel_api_from_i32(unsigned char const* b);
 
 /**
  * @brief Encode a signed 32-bit integer to a byte array.
  * @param b byte array
  * @param v the signed integer
  */
-QBParse_API
-void qbparse_api_to_i32(unsigned char* b, long int v);
+QBVoxel_API
+void qbvoxel_api_to_i32(unsigned char* b, long int v);
 
 /**
  * @brief Query a state for the last error code.
  * @param s the state structure to query
  * @return zero if no error, nonzero otherwise
  */
-QBParse_API
-int qbparse_api_get_error(struct qbparse_state const* s);
+QBVoxel_API
+int qbvoxel_api_get_error(struct qbvoxel_state const* s);
 
 /**
  * @brief Allocate some memory.
  * @param sz number of bytes to allocate
  * @return pointer to memory on success, NULL on failure
  */
-QBParse_API
-void* qbparse_api_malloc(unsigned int sz);
+QBVoxel_API
+void* qbvoxel_api_malloc(unsigned int sz);
 
 /**
  * @brief Release some memory.
  * @param p pointer to memory to free
  */
-QBParse_API
-void qbparse_api_free(void* p);
+QBVoxel_API
+void qbvoxel_api_free(void* p);
 
 /**
  * @brief Allocate enough memory for a single state.
  * @param sz number of bytes to allocate
  * @return pointer to memory on success, NULL on failure
- * @note Release with `qbparse_api_free`.
+ * @note Release with `qbvoxel_api_free`.
  */
-QBParse_API
-struct qbparse_state* qbparse_api_alloc_state(void);
+QBVoxel_API
+struct qbvoxel_state* qbvoxel_api_alloc_state(void);
 
 /**
  * @brief Query a state for the encode flags.
  * @param s the state structure to query
  * @return encode flags
  */
-QBParse_API
-unsigned int qbparse_api_get_flags(struct qbparse_state const* s);
+QBVoxel_API
+unsigned int qbvoxel_api_get_flags(struct qbvoxel_state const* s);
 
 /**
  * @brief Query a state for the encode flags.
  * @param s the state structure to query
  * @param f encode flags
  */
-QBParse_API
-void qbparse_api_set_flags(struct qbparse_state* s, unsigned int f);
+QBVoxel_API
+void qbvoxel_api_set_flags(struct qbvoxel_state* s, unsigned int f);
 
 
 #if defined(__cplusplus)
 };
 #endif /*__cplusplus*/
 
-#endif /*hg_QBParse_api_h_*/
+#endif /*hg_QBVoxel_api_h_*/

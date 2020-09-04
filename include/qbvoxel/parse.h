@@ -1,9 +1,9 @@
 /**
- * @file qbparse/parse.h
+ * @file qbvoxel/parse.h
  * @brief Parser backend for the Qubicle parser library
  */
-#if !defined(hg_QBParse_parse_h_)
-#define hg_QBParse_parse_h_
+#if !defined(hg_QBVoxel_parse_h_)
+#define hg_QBVoxel_parse_h_
 
 #include "api.h"
 
@@ -17,15 +17,15 @@ extern "C" {
  * @param cb the callback interface to use
  * @return zero on success
  */
-QBParse_API
-int qbparse_parse_init(struct qbparse_state *s, struct qbparse_i* cb);
+QBVoxel_API
+int qbvoxel_parse_init(struct qbvoxel_state *s, struct qbvoxel_i* cb);
 
 /**
  * @brief Close a state for parsing.
  * @param s the state structure to close
  */
-QBParse_API
-void qbparse_parse_clear(struct qbparse_state *s);
+QBVoxel_API
+void qbvoxel_parse_clear(struct qbvoxel_state *s);
 
 /**
  * @brief Parse the next piece of a binary stream.
@@ -34,12 +34,12 @@ void qbparse_parse_clear(struct qbparse_state *s);
  * @param buf block of bytes to parse
  * @return the number of bytes parsed
  */
-QBParse_API
-unsigned int qbparse_parse_do
-  (struct qbparse_state *s, unsigned int sz, unsigned char const* buf);
+QBVoxel_API
+unsigned int qbvoxel_parse_do
+  (struct qbvoxel_state *s, unsigned int sz, unsigned char const* buf);
 
 #if defined(__cplusplus)
 };
 #endif /*__cplusplus*/
 
-#endif /*hg_QBParse_parse_h_*/
+#endif /*hg_QBVoxel_parse_h_*/
