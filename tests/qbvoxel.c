@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Unlicense */
 #include "qbvoxel/api.h"
 #include "qbvoxel/parse.h"
 #include <stddef.h>

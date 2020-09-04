@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Unlicense
 cmake_minimum_required(VERSION 3.0)
 project(QBVoxel C)
 

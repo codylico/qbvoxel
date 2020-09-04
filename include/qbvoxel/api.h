@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Unlicense */
 /**
  * @file qbvoxel/api.h
  * @brief Base file for the Qubicle parser library
