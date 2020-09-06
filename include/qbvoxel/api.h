@@ -50,12 +50,35 @@ enum qbvoxel_error {
   QBVoxel_ErrCompress = 5,
   /**
    * @brief Index out of range.
+   * @note This code not emitted directly by this library.
    */
   QBVoxel_ErrOutOfRange = 6,
   /**
    * @brief Out of memory.
+   * @note This code not emitted directly by this library.
    */
-  QBVoxel_ErrMemory = 7
+  QBVoxel_ErrMemory = 7,
+  /**
+   * @brief File not found.
+   * @note This code not emitted directly by this library.
+   */
+  QBVoxel_ErrIONotFound = 8,
+  /**
+   * @brief Generic input/output error.
+   * @note This code not emitted directly by this library.
+   */
+  QBVoxel_ErrIOGeneric = 9,
+  /**
+   * @brief Matrix count not supported.
+   * @note Useful in applications expecting a single matrix per file.
+   * @note This code not emitted directly by this library.
+   */
+  QBVoxel_ErrMatrixCount = 10,
+  /**
+   * @brief First error code guaranteed unused by this library.
+   * @note This code not emitted directly by this library.
+   */
+  QBVoxel_UserError = 32
 };
 
 /**
