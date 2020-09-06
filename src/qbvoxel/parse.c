@@ -194,4 +194,5 @@ unsigned int qbvoxel_parse_do
       } break;
     }
   }
+  return i;
 }
