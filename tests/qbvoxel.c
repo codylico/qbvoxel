@@ -347,7 +347,7 @@ int cb_resize(void* p, unsigned long int n) {
 }
 unsigned long int cb_size(void const* p) {
   struct cb_matrix_array *const qma = (struct cb_matrix_array *)p;
-  return qma->count;
+  return (unsigned long int)qma->count;
 }
 int cb_get_matrix
   (void const* p, unsigned long int i, struct qbvoxel_matrix_info *mi)
