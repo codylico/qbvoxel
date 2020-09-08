@@ -6,7 +6,7 @@
 #if !defined(hg_QBVoxel_api_h_)
 #define hg_QBVoxel_api_h_
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(QBVoxel_WIN32_DLL)
 #  if defined(QBVoxel_API_Impl)
 #    define QBVoxel_API __declspec(dllexport)
 #  else
