@@ -11,10 +11,12 @@ option(QBVoxel_BUILD_TESTING "Build tests for QBVoxel" OFF)
 
 set(qbvoxel_HEADERS
   include/qbvoxel/api.h
-  include/qbvoxel/parse.h)
+  include/qbvoxel/parse.h
+  include/qbvoxel/gen.h)
 set(qbvoxel_SOURCES
   src/qbvoxel/api.c
-  src/qbvoxel/parse.c)
+  src/qbvoxel/parse.c
+  src/qbvoxel/gen.c)
 
 add_library(qbvoxel ${qbvoxel_HEADERS} ${qbvoxel_SOURCES})
 target_include_directories(qbvoxel PRIVATE include)

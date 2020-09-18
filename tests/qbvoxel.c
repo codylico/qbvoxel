@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Unlicense */
 #include "qbvoxel/api.h"
 #include "qbvoxel/parse.h"
+#include "qbvoxel/gen.h"
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
@@ -19,6 +20,7 @@ static int test_arrayresize(void*);
 static int test_flags(void*);
 static int test_addmatrix(void*);
 static int test_fillmatrix(void*);
+static int test_genmatrix(void*);
 
 struct cb_matrix {
   unsigned int width, height, depth;
@@ -78,7 +80,8 @@ static struct {
   { "arrayresize", test_arrayresize },
   { "flags", test_flags },
   { "addmatrix", test_addmatrix},
-  { "fillmatrix", test_fillmatrix}
+  { "fillmatrix", test_fillmatrix},
+  { "genmatrix", test_genmatrix}
 };
 
 int test_u32(void* p) {
@@ -315,6 +318,50 @@ int test_fillmatrix(void* q) {
     res = EXIT_SUCCESS;
   } while (0);
   qbvoxel_parse_clear(&st);
+  return res;
+}
+
+int test_genmatrix(void* q) {
+  unsigned char outbuf[256];
+  struct qbvoxel_i* const qi = (struct qbvoxel_i *)q;
+  struct cb_matrix_array *const qma = (struct cb_matrix_array *)(qi->p);
+  unsigned int const len = (unsigned int)sizeof(three_qb);
+  qbvoxel_state st;
+  int res = EXIT_FAILURE;
+  int flags = 0;
+  qbvoxel_parse_init(&st, qi);
+  /* parse */do {
+    if (len < 164)
+      break;
+    if (qbvoxel_parse_do(&st, 164, three_qb) != 164)
+      break;
+    if (qbvoxel_api_get_error(&st) != 0)
+      break;
+    if (qma->count != 1)
+      break;
+    if (qma->matrices[0].data == NULL)
+      break;
+    res = EXIT_SUCCESS;
+  } while (0);
+  flags = qbvoxel_api_get_flags(&st);
+  qbvoxel_parse_clear(&st);
+  if (res == EXIT_SUCCESS) {
+    res = EXIT_FAILURE;
+    qbvoxel_gen_init(&st, qi);
+    qbvoxel_api_set_flags(&st, flags);
+    /* generate */do {
+      if (sizeof(outbuf) < 200)
+          break;
+      if (qbvoxel_gen_do(&st, 200, outbuf) != len)
+        break;
+      if (qbvoxel_api_get_error(&st) != 0)
+        break;
+      if (memcmp(outbuf, three_qb, len) != 0)
+        break;
+      res = EXIT_SUCCESS;
+    } while (0);
+    qbvoxel_gen_clear(&st);
+  }
   return res;
 }
 

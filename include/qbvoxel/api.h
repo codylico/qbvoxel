@@ -70,8 +70,10 @@ enum qbvoxel_error {
   QBVoxel_ErrIOGeneric = 9,
   /**
    * @brief Matrix count not supported.
+   * @note Emitted by the generator when requesting to export more
+   *   than UINT32_MAX matrices.
    * @note Useful in applications expecting a single matrix per file.
-   * @note This code not emitted directly by this library.
+   * @note This code not emitted by the parser.
    */
   QBVoxel_ErrMatrixCount = 10,
   /**
