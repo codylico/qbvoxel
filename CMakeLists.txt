@@ -8,6 +8,7 @@ endif (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
 option(BUILD_TESTING "Build some tests" OFF)
 option(QBVoxel_BUILD_TESTING "Build tests for QBVoxel" OFF)
+option(QBVoxel_BUILD_TOOLS "Build tools for QBVoxel" OFF)
 
 set(qbvoxel_HEADERS
   include/qbvoxel/api.h
@@ -33,3 +34,8 @@ if (QBVoxel_BUILD_TESTING AND BUILD_TESTING)
   target_include_directories(qbvoxel_test PRIVATE include)
   add_test(NAME qbvoxel_test COMMAND qbvoxel_test)
 endif (QBVoxel_BUILD_TESTING AND BUILD_TESTING)
+if (QBVoxel_BUILD_TOOLS)
+  add_executable(qbvoxel_churn tools/churn.c)
+  target_link_libraries(qbvoxel_churn qbvoxel)
+  target_include_directories(qbvoxel_churn PRIVATE include)
+endif (QBVoxel_BUILD_TOOLS)
