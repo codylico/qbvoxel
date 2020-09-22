@@ -219,6 +219,13 @@ unsigned int qbvoxel_parse_do
         }
         s->pos = 0u;
         s->state = (s->flags & QBVoxel_FlagRLE) ? 5u : 4u;
+        /* empty block, */if (s->x == s->width
+        ||  s->y == s->height
+        ||  s->z == s->depth)
+        {
+          /* go to next matrix, or done if this was the last matrix */
+          qbvoxel_parse_newmatrix(s);
+        }
       } break;
     case 4: /* uncompressed matrix data */
       if (s->pos < 4u) {
