@@ -8,6 +8,73 @@
 #include <string.h>
 #include <stddef.h>
 
+/**
+ * @brief Fetch a voxel from the callback.
+ * @param s generator state
+ * @param pos write position for buffer
+ */
+static
+void qbvoxel_gen_cb_fetch(struct qbvoxel_state *s, size_t pos);
+/**
+ * @brief Advance the voxel position.
+ * @param s generator state
+ * @return nonzero at end of slice, zero otherwise
+ */
+static
+int qbvoxel_gen_nextvoxel(struct qbvoxel_state *s);
+/**
+ * @brief Advance the matrix position.
+ * @param s generator state
+ */
+static
+void qbvoxel_gen_newmatrix(struct qbvoxel_state *s);
+
+
+/* BEGIN qbvoxel/gen static */
+void qbvoxel_gen_cb_fetch(struct qbvoxel_state *s, size_t pos) {
+  if (s->cb != NULL) {
+    struct qbvoxel_voxel rgba = { 0 };
+    s->last_error = (*s->cb->read_voxel)
+      (s->cb->p, s->i, s->x, s->y, s->z, &rgba);
+    if (s->flags & QBVoxel_FlagBGRA) {
+      s->buffer[pos+0u] = rgba.b;
+      s->buffer[pos+1u] = rgba.g;
+      s->buffer[pos+2u] = rgba.r;
+      s->buffer[pos+3u] = rgba.a;
+    } else /*RGBA */{
+      s->buffer[pos+0u] = rgba.r;
+      s->buffer[pos+1u] = rgba.g;
+      s->buffer[pos+2u] = rgba.b;
+      s->buffer[pos+3u] = rgba.a;
+    }
+  } else {
+    memset(s->buffer+pos,0,4u);
+  }
+  return;
+}
+
+int qbvoxel_gen_nextvoxel(struct qbvoxel_state *s) {
+  s->x += 1u;
+  if (s->x >= s->width) {
+    s->x = 0u;
+    s->y += 1u;
+  }
+  if (s->y >= s->height) {
+    s->y = 0u;
+    s->z += 1u;
+    return 1;
+  } else return 0;
+}
+
+void qbvoxel_gen_newmatrix(struct qbvoxel_state *s) {
+  unsigned long int const matrix_count =
+    qbvoxel_api_from_u32(s->buffer+24);
+  s->i += 1u;
+  s->state = (s->i >= matrix_count) ? 255u : 1u;
+  return;
+}
+/* END   qbvoxel/gen static */
+
 int qbvoxel_gen_init(struct qbvoxel_state *s, struct qbvoxel_i* cb) {
   s->last_error = 0;
   s->state = 0u;
@@ -151,24 +218,7 @@ unsigned int qbvoxel_gen_do
       } break;
     case 4: /* uncompressed matrix data */
       if (s->pos == 0u) {
-        if (s->cb != NULL) {
-          struct qbvoxel_voxel rgba = { 0 };
-          s->last_error = (*s->cb->read_voxel)
-            (s->cb->p, s->i, s->x, s->y, s->z, &rgba);
-          if (s->flags & QBVoxel_FlagBGRA) {
-            s->buffer[0] = rgba.b;
-            s->buffer[1] = rgba.g;
-            s->buffer[2] = rgba.r;
-            s->buffer[3] = rgba.a;
-          } else /*RGBA */{
-            s->buffer[0] = rgba.r;
-            s->buffer[1] = rgba.g;
-            s->buffer[2] = rgba.b;
-            s->buffer[3] = rgba.a;
-          }
-        } else {
-          memset(s->buffer,0,4u);
-        }
+        qbvoxel_gen_cb_fetch(s, 0);
       }
       if (s->pos < 4u) {
         buf[i] = s->buffer[s->pos];
@@ -176,22 +226,11 @@ unsigned int qbvoxel_gen_do
       }
       if (s->pos >= 4u) {
         s->pos = 0u;
-        s->x += 1u;
-      }
-      if (s->x >= s->width) {
-        s->x = 0u;
-        s->y += 1u;
-      }
-      if (s->y >= s->height) {
-        s->y = 0u;
-        s->z += 1u;
+        (void)qbvoxel_gen_nextvoxel(s);
       }
       if (s->z >= s->depth) {
         /* go to next matrix, or done if this was the last matrix */
-        unsigned long int const matrix_count =
-          qbvoxel_api_from_u32(s->buffer+24);
-        s->i += 1u;
-        s->state = (s->i >= matrix_count) ? 255u : 1u;
+        qbvoxel_gen_newmatrix(s);
       } break;
     }
   }
