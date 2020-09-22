@@ -8,6 +8,73 @@
 #include <string.h>
 #include <stddef.h>
 
+/**
+ * @brief Deliver a voxel to the callback.
+ * @param s parser state
+ * @param pos read position for buffer
+ */
+static
+void qbvoxel_parse_cb_put(struct qbvoxel_state *s, size_t pos);
+/**
+ * @brief Advance the voxel position.
+ * @param s parser state
+ * @return nonzero at end of slice, zero otherwise
+ */
+static
+int qbvoxel_parse_nextvoxel(struct qbvoxel_state *s);
+/**
+ * @brief Advance the matrix position.
+ * @param s parser state
+ */
+static
+void qbvoxel_parse_newmatrix(struct qbvoxel_state *s);
+
+
+/* BEGIN qbvoxel/parse static */
+void qbvoxel_parse_cb_put(struct qbvoxel_state *s, size_t pos) {
+  if (s->cb != NULL) {
+    if (s->flags & QBVoxel_FlagBGRA) {
+      struct qbvoxel_voxel const bgra = {
+          s->buffer[2u+pos], s->buffer[1u+pos],
+          s->buffer[0u+pos], s->buffer[3u+pos]
+        };
+      s->last_error = (*s->cb->write_voxel)(
+        s->cb->p, s->i, s->x, s->y, s->z, &bgra);
+    } else /*RGBA */{
+      struct qbvoxel_voxel const rgba = {
+          s->buffer[0u+pos], s->buffer[1u+pos],
+          s->buffer[2u+pos], s->buffer[3u+pos]
+        };
+      s->last_error = (*s->cb->write_voxel)(
+        s->cb->p, s->i, s->x, s->y, s->z, &rgba);
+    }
+  }
+  return;
+}
+
+int qbvoxel_parse_nextvoxel(struct qbvoxel_state *s) {
+  s->x += 1u;
+  if (s->x >= s->width) {
+    s->x = 0u;
+    s->y += 1u;
+  }
+  if (s->y >= s->height) {
+    s->y = 0u;
+    s->z += 1u;
+    return 1;
+  } else return 0;
+}
+
+void qbvoxel_parse_newmatrix(struct qbvoxel_state *s) {
+  unsigned long int const matrix_count =
+    qbvoxel_api_from_u32(s->buffer+24);
+  s->i += 1u;
+  s->state = (s->i >= matrix_count) ? 255u : 1u;
+  return;
+}
+/* END   qbvoxel/parse static */
+
+
 int qbvoxel_parse_init(struct qbvoxel_state *s, struct qbvoxel_i* cb) {
   s->last_error = 0;
   s->state = 0u;
@@ -160,37 +227,12 @@ unsigned int qbvoxel_parse_do
       }
       if (s->pos >= 4u) {
         s->pos = 0u;
-        if (s->cb != NULL) {
-          if (s->flags & QBVoxel_FlagBGRA) {
-            struct qbvoxel_voxel const bgra = {
-                s->buffer[2], s->buffer[1], s->buffer[0], s->buffer[3]
-              };
-            s->last_error = (*s->cb->write_voxel)(
-              s->cb->p, s->i, s->x, s->y, s->z, &bgra);
-          } else /*RGBA */{
-            struct qbvoxel_voxel const rgba = {
-                s->buffer[0], s->buffer[1], s->buffer[2], s->buffer[3]
-              };
-            s->last_error = (*s->cb->write_voxel)(
-              s->cb->p, s->i, s->x, s->y, s->z, &rgba);
-          }
-        }
-        s->x += 1u;
-      }
-      if (s->x >= s->width) {
-        s->x = 0u;
-        s->y += 1u;
-      }
-      if (s->y >= s->height) {
-        s->y = 0u;
-        s->z += 1u;
+        qbvoxel_parse_cb_put(s, 0u);
+        qbvoxel_parse_nextvoxel(s);
       }
       if (s->z >= s->depth) {
         /* go to next matrix, or done if this was the last matrix */
-        unsigned long int const matrix_count =
-          qbvoxel_api_from_u32(s->buffer+24);
-        s->i += 1u;
-        s->state = (s->i >= matrix_count) ? 255u : 1u;
+        qbvoxel_parse_newmatrix(s);
       } break;
     }
   }
