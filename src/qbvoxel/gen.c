@@ -120,9 +120,16 @@ unsigned int qbvoxel_gen_do
    * 2    - matrix name
    * 3    - matrix bounds
    * 4    - uncompressed matrix data
+   * 5    - compressed matrix data / base
+   * 6    - compressed matrix data / base x2
+   * 7    - compressed matrix data / base x3
+   * 8    - compressed matrix data / base x4
+   * 9    - compressed matrix data / degenerate nonzero depth
    * 255  - end of stream
    */
   unsigned int i;
+  static unsigned char const next_slice[4] = { 6u, 0u, 0u, 0u };
+  static unsigned char const next_rle[4] = { 2u, 0u, 0u, 0u };
   for (i = 0u; i < sz && s->last_error == 0; ++i) {
     if (s->state == 255u) {
       /* end of stream, so */break;
@@ -210,16 +217,31 @@ unsigned int qbvoxel_gen_do
         s->pos += 1u;
       }
       if (s->pos >= 24u) {
-        s->state = (s->flags & QBVoxel_FlagRLE) ? 5u : 4u;
         s->pos = 0u;
         s->x = 0u;
         s->y = 0u;
         s->z = 0u;
-
-        /* empty block, */if (s->z == s->depth
-        ||  s->x == s->width
-        ||  s->y == s->height)/* so, */
-        {
+        if (s->flags & QBVoxel_FlagRLE) {
+          if (s->depth == 0u) {
+            /* [[fallthrough]] */;
+          } else if (s->width == 0u || s->height == 0u) {
+            s->state = 9u;
+            memcpy(s->buffer, next_slice, 4);
+            break;
+          } else {
+            s->state = 5u;
+            qbvoxel_gen_cb_fetch(s, 16);
+            break;
+          }
+        } else {
+          if (s->depth == 0u || s->height == 0u || s->width == 0u) {
+            /* [[fallthrough]] */;
+          } else {
+            s->state = 4u;
+            break;
+          }
+        }
+        /* empty block, so */{
           /* go to next matrix, or done if this was the last matrix */
           qbvoxel_gen_newmatrix(s);
         }
@@ -240,6 +262,109 @@ unsigned int qbvoxel_gen_do
         /* go to next matrix, or done if this was the last matrix */
         qbvoxel_gen_newmatrix(s);
       } break;
+    case 5: /* compressed matrix data / base */
+      /* determine length of current run */if (s->pos == 0) {
+        unsigned long int count = 1u;
+        unsigned long int const old_z = s->z;
+        memcpy(s->buffer+8, s->buffer+16, 4);
+        while (qbvoxel_gen_nextvoxel(s) == 0) {
+          qbvoxel_gen_cb_fetch(s, 16);
+          if (memcmp(s->buffer+16, s->buffer+8, 4) == 0) {
+            count += 1u;
+            if (count == 0xFFffFFfflu) {
+              count -= 1u;
+              break;
+            }
+          } else break;
+        }
+        if (old_z != s->z && s->z < s->depth) {
+          qbvoxel_gen_cb_fetch(s, 16);
+        }
+        if (memcmp(s->buffer+8, next_slice, 4) == 0
+        ||  memcmp(s->buffer+8, next_rle, 4) == 0
+        ||  count >= 3u)
+        {
+          memcpy(s->buffer, next_rle, 4);
+          qbvoxel_api_to_u32(s->buffer+4, count);
+          s->state = 7u;
+        } else if (count == 2u) {
+          memcpy(s->buffer, s->buffer+8, 4);
+          memcpy(s->buffer+4, s->buffer+8, 4);
+          s->state = 6u;
+        } else {
+          memcpy(s->buffer, s->buffer+8, 4);
+        }
+        if (old_z < s->z) {
+          /* add a slice mark */
+          memcpy(s->buffer+((s->state-4u)*4u), next_slice, 4);
+          s->state += 1u;
+        }
+      }
+      if (s->pos < 4u) {
+        buf[i] = s->buffer[s->pos];
+        s->pos += 1u;
+      }
+      if (s->pos >= 4u) {
+        if (s->z >= s->depth)
+          qbvoxel_gen_newmatrix(s);
+        else {
+          s->state = 5u;
+          s->pos = 0u;
+        }
+      } break;
+    case 6: /* compressed matrix data / base x2 */
+      if (s->pos < 8u) {
+        buf[i] = s->buffer[s->pos];
+        s->pos += 1u;
+      }
+      if (s->pos >= 8u) {
+        if (s->z >= s->depth)
+          qbvoxel_gen_newmatrix(s);
+        else {
+          s->state = 5u;
+          s->pos = 0u;
+        }
+      } break;
+    case 7: /* compressed matrix data / base x3 */
+      if (s->pos < 12u) {
+        buf[i] = s->buffer[s->pos];
+        s->pos += 1u;
+      }
+      if (s->pos >= 12u) {
+        if (s->z >= s->depth)
+          qbvoxel_gen_newmatrix(s);
+        else {
+          s->state = 5u;
+          s->pos = 0u;
+        }
+      } break;
+    case 8: /* compressed matrix data / base x4 */
+      if (s->pos < 16u) {
+        buf[i] = s->buffer[s->pos];
+        s->pos += 1u;
+      }
+      if (s->pos >= 16u) {
+        if (s->z >= s->depth)
+          qbvoxel_gen_newmatrix(s);
+        else {
+          s->state = 5u;
+          s->pos = 0u;
+        }
+      } break;
+    case 9: /* compressed matrix data / degenerate nonzero depth */
+      {
+        if (s->pos < 4u) {
+          buf[i] = s->buffer[s->pos];
+        }
+        if (s->pos >= 4u) {
+          s->z += 1u;
+          s->pos = 0u;
+        }
+        if (s->z >= s->depth) {
+          /* go to next matrix, or done if this was the last matrix */
+          qbvoxel_gen_newmatrix(s);
+        } break;
+      }break;
     }
   }
   return i;
