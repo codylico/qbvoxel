@@ -215,6 +215,14 @@ unsigned int qbvoxel_gen_do
         s->x = 0u;
         s->y = 0u;
         s->z = 0u;
+
+        /* empty block, */if (s->z == s->depth
+        ||  s->x == s->width
+        ||  s->y == s->height)/* so, */
+        {
+          /* go to next matrix, or done if this was the last matrix */
+          qbvoxel_gen_newmatrix(s);
+        }
       } break;
     case 4: /* uncompressed matrix data */
       if (s->pos == 0u) {
