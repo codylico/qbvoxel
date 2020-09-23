@@ -276,4 +276,3 @@ int main(int argc, char **argv) {
   cb_resize(&qma,0);
   return res;
 }
-
