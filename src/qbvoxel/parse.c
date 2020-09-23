@@ -120,9 +120,15 @@ unsigned int qbvoxel_parse_do
    * 2    - matrix name
    * 3    - matrix bounds
    * 4    - uncompressed matrix data
+   * 5    - compressed matrix data / base
+   * 7    - compressed matrix data / run-length encoding
+   * 8    - compressed matrix data / expect next slice
+   * 9    - compressed matrix data / degenerate nonzero depth
    * 255  - end of stream
    */
   unsigned int i;
+  static unsigned char const next_slice[4] = { 6u, 0u, 0u, 0u };
+  static unsigned char const next_rle[4] = { 2u, 0u, 0u, 0u };
   for (i = 0u; i < sz && s->last_error == 0; ++i) {
     if (s->state == 255u) {
       /* end of stream, so */break;
@@ -218,11 +224,25 @@ unsigned int qbvoxel_parse_do
           s->last_error = (*s->cb->set_matrix)(s->cb->p, s->i, &mi);
         }
         s->pos = 0u;
-        s->state = (s->flags & QBVoxel_FlagRLE) ? 5u : 4u;
-        /* empty block, */if (s->x == s->width
-        ||  s->y == s->height
-        ||  s->z == s->depth)
-        {
+        if (s->flags & QBVoxel_FlagRLE) {
+          if (s->depth == 0u) {
+            /* [[fallthrough]] */;
+          } else if (s->width == 0u || s->height == 0u) {
+            s->state = 9u;
+            break;
+          } else {
+            s->state = 5u;
+            break;
+          }
+        } else {
+          if (s->depth == 0u || s->height == 0u || s->width == 0u) {
+            /* [[fallthrough]] */;
+          } else {
+            s->state = 4u;
+            break;
+          }
+        }
+        /* empty block, so */{
           /* go to next matrix, or done if this was the last matrix */
           qbvoxel_parse_newmatrix(s);
         }
@@ -240,6 +260,77 @@ unsigned int qbvoxel_parse_do
       if (s->z >= s->depth) {
         /* go to next matrix, or done if this was the last matrix */
         qbvoxel_parse_newmatrix(s);
+      } break;
+    case 5: /* compressed matrix data / base */
+      if (s->pos < 4u) {
+        s->buffer[s->pos] = buf[i];
+        s->pos += 1u;
+      }
+      if (s->pos >= 4u) {
+        int advance_tf = 0;
+        if (memcmp(s->buffer, next_slice, 4) == 0) {
+          /* early quit, run through final voxels */
+          /* TODO is this an error condition? */
+          memset(s->buffer+4, 0, 4u);
+          do {
+            qbvoxel_parse_cb_put(s, 4u);
+          } while (qbvoxel_parse_nextvoxel(s) == 0);
+          s->pos = 0u;
+          advance_tf = 1;
+        } else if (memcmp(s->buffer, next_rle, 4) == 0) {
+          s->state = 7u;
+        } else {
+          qbvoxel_parse_cb_put(s, 0u);
+          if (qbvoxel_parse_nextvoxel(s) ) {
+            s->state = 8u;
+          }
+          s->pos = 0u;
+        }
+        if (advance_tf && s->z >= s->depth) {
+          /* go to next matrix, or done if this was the last matrix */
+          qbvoxel_parse_newmatrix(s);
+        }
+      } break;
+    case 7: /* compressed matrix data / run-length encoding */
+      if (s->pos < 12u) {
+        s->buffer[s->pos] = buf[i];
+        s->pos += 1u;
+      }
+      if (s->pos >= 12u) {
+        unsigned long int const count = qbvoxel_api_from_u32(s->buffer+4u);
+        unsigned long int j;
+        int advance_tf = 0;
+        for (j = 0u; j < count && (!advance_tf); ++j) {
+          qbvoxel_parse_cb_put(s, 8u);
+          advance_tf = qbvoxel_parse_nextvoxel(s);
+        }
+        if (j < count) {
+          /* overran slice boundary; signal an error */
+          s->last_error = QBVoxel_ErrOverrun;
+        } else if (advance_tf) {
+          s->state = 8u;
+        } else {
+          s->state = 5u;
+        }
+        s->pos = 0u;
+      } break;
+    case 8: /* compressed matrix data / expect next slice */
+    case 9: /* compressed matrix data / degenerate nonzero depth */
+      if (s->pos < 4u) {
+        s->buffer[s->pos] = buf[i];
+        s->pos += 1u;
+      }
+      if (s->pos >= 4u) {
+        if (memcmp(s->buffer, next_slice, 4) == 0) {
+          /* okay */;
+          if (s->z >= s->depth) {
+            /* go to next matrix, or done if this was the last matrix */
+            qbvoxel_parse_newmatrix(s);
+          } else if (s->state != 9)
+            s->state = 5u;
+          else { /* stay put */; }
+        } else s->last_error = QBVoxel_ErrOverrun;
+        s->pos = 0u;
       } break;
     }
   }
