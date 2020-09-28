@@ -1,4 +1,9 @@
 /* SPDX-License-Identifier: Unlicense */
+/*
+ * Notes about this tool:
+ * - Matrices are column major.
+ * - Vectors are multiplied on the right of a matrix.
+ */
 #include "qbvoxel/api.h"
 #include "qbvoxel/parse.h"
 #include "qbvoxel/gen.h"
@@ -54,40 +59,136 @@ static int cb_write_voxel
     unsigned long int x,unsigned long int y,unsigned long int z,
     struct qbvoxel_voxel const* v);
 
+/**
+ * @brief Multiply two 4x4 matrices.
+ * @param[out] dst output matrix
+ * @param a left matrix
+ * @param b right matrix
+ */
 static
 void matrix_mult(float* dst, float const* a, float const* b);
+/**
+ * @brief Multiply a 4x4 matrix by a vector.
+ * @param[out] dst output vector
+ * @param a left matrix
+ * @param b right vector
+ */
 static
 void matrix_vec_mult(float* dst, float const* m, float const* v);
+/**
+ * @brief Multiply a 4x4 matrix by a vector, with perspective divide.
+ * @param[out] dst output vector
+ * @param a left matrix
+ * @param b right vector
+ */
 static
 void matrix_vec_multw(float* dst, float const* m, float const* v);
+/**
+ * @brief Invert a matrix.
+ * @param[out] inverted matrix
+ * @param src matrix
+ * @return nonzero on success, zero if the matrix might be "singular"
+ */
 static
 int matrix_invert(float* dst, float const* src);
+/**
+ * @brief Trace a ray through a Qubicle matrix.
+ * @param[out] color output color
+ * @param[out] normal output normal
+ * @param voxels the Qubicle matrix
+ * @param ray_start start of ray
+ * @param ray_end "end" of ray
+ * @return a coordinate along the ray, with `0` at the start and `1` at
+ *   the "end"
+ */
 static
 float trace_ray
   ( float* color, float* normal, struct cb_matrix const* voxels,
     float const* ray_start, float const* ray_end);
+/**
+ * @brief Determine when a ray crosses two axis-aligned planes.
+ * @param[out] left_right array of `2` floats, to hold the
+ *     `t` for crossing the left and right planes, respectively.
+ * @param ray_start coordinate of starting point of ray `(t=0)`
+ * @param ray_end coordinate of end point of ray `(t=1)`
+ * @param box_left coordinate of the left plane
+ * @param box_right coordinate of the right plane
+ * @return whether the ray crosses or not
+ * @note This function handles the parallel cases.
+ */
 static
 int ray_range_unordered
   ( float* left_right, float ray_start, float ray_end,
     float box_left, float box_right);
+/**
+ * @brief Compute a position along a ray.
+ * @param[out] dst array of 3 floats, to hold the position
+ * @param t ray-based coordinate
+ * @param ray_start coordinate of starting point of ray `(t=0)`
+ * @param ray_end coordinate of end point of ray `(t=1)`
+ */
 static
 void ray_interpolate
   (float* dst, float t, float const* ray_start, float const* ray_end);
+/**
+ * @brief Subtract one vector from another.
+ * @param[out] dst array of 3 floats, to hold the position
+ * @param a another vector
+ * @param b the vector to subtract
+ */
 static
 void vec3_subtract(float *dst, float const* a, float const* b);
+/**
+ * @brief Resolve which voxel of a matrix gets hit.
+ * @param coord axis hint for voxel checking
+ * @param[out] color output color
+ * @param[out] normal output normal
+ * @param voxels the matrix to trace
+ * @param box_start start of a ray `(t=0)`
+ * @param box_end end of a ray `(t=1)`
+ * @return a coordinate along a ray for intersection, or `+HUGE_VAL`
+ *   on miss
+ */
 static
 float resolve_voxel(int coord, float *color, float *normal,
   struct cb_matrix const* voxels, float const* box_start,
   float const* box_end);
+/**
+ * @brief Convert a voxel coordinate to a flat array index.
+ * @param voxels the matrix to use
+ * @param x x-axis coordinate
+ * @param y y-axis coordinate
+ * @param z z-axis coordinate
+ * @return a flat array index
+ */
 static
 size_t resolve_voxel_pos
   ( struct cb_matrix const* voxels, unsigned int x, unsigned int y,
     unsigned int z);
+/**
+ * @brief Compute a ray-box intersection.
+ * @param[out] side which side of the box was hit, or `BoxSide_none` on miss
+ * @param[out] back_intercept the ray coordinate at exit
+ * @param corner_1 most negative corner of the box
+ * @param corner_2 most positive corner of the box
+ * @param ray_start coordinate of starting point of ray `(t=0)`
+ * @param ray_end coordinate of end point of ray `(t=1)`
+ * @return the ray coordinate at entrance of box
+ */
 static
 float ray_intersect_box
   ( int* side, float* back_intercept,
     float const* corner_1, float const* corner_2,
     float const* ray_start, float const* ray_end);
+/**
+ * @brief The pixel shader.
+ * @param[in,out] color input color for diffuse, output color for shaded
+ * @param raster_pos position of pixel in world space
+ * @param light_pos position of point light in world space
+ * @param ambient ambient color
+ * @param normal surface normal
+ * @param qma matrix list for shadow computation
+ */
 static
 void pixel_shade
   ( float* color, float const* raster_pos, float const* light_pos,
