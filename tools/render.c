@@ -59,6 +59,8 @@ void matrix_mult(float* dst, float const* a, float const* b);
 static
 void matrix_vec_mult(float* dst, float const* m, float const* v);
 static
+void matrix_vec_multw(float* dst, float const* m, float const* v);
+static
 int matrix_invert(float* dst, float const* src);
 static
 float trace_ray
