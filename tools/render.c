@@ -87,8 +87,6 @@ float ray_intersect_box
     float const* corner_1, float const* corner_2,
     float const* ray_start, float const* ray_end);
 static
-void box_side_pseudocolor(float *color, int side);
-static
 void pixel_shade
   ( float* color, float const* raster_pos, float const* light_pos,
     float const* ambient, float const* normal, struct cb_matrix_array *qma);
@@ -453,39 +451,6 @@ float ray_intersect_box
   }
 }
 
-void box_side_pseudocolor(float *color, int side) {
-  switch (side) {
-  case BoxSide_XMinus:
-    color[0] = 0.f; color[1] = 1.f; color[2] = 1.f;
-    color[3] = 1.f;
-    break;
-  case BoxSide_XPlus:
-    color[0] = 1.f; color[1] = 0.f; color[2] = 0.f;
-    color[3] = 1.f;
-    break;
-  case BoxSide_YMinus:
-    color[0] = 1.f; color[1] = 0.f; color[2] = 1.f;
-    color[3] = 1.f;
-    break;
-  case BoxSide_YPlus:
-    color[0] = 0.f; color[1] = 1.f; color[2] = 0.f;
-    color[3] = 1.f;
-    break;
-  case BoxSide_ZMinus:
-    color[0] = 1.f; color[1] = 1.f; color[2] = 0.f;
-    color[3] = 1.f;
-    break;
-  case BoxSide_ZPlus:
-    color[0] = 0.f; color[1] = 0.f; color[2] = 1.f;
-    color[3] = 1.f;
-    break;
-  default:
-    color[0] = 0.f; color[1] = 0.f; color[2] = 0.f;
-    color[3] = 0.f;
-    break;
-  }
-  return;
-}
 
 float trace_ray
   ( float* color, float* normal, struct cb_matrix const* voxels,
