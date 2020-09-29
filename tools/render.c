@@ -1058,9 +1058,20 @@ int main(int argc, char **argv) {
       matrix_mult(modelview, modelview, center_matrix);
     }
   }
+  /* adjust the projection matrix */{
+    if (width < 0)
+      width = 64;
+    if (height < 0)
+      height = 64;
+    if (width < height) {
+      projection[5] = width/(float)height;
+    } else if (width > height) {
+      projection[0] = height/(float)width;
+    }
+  }
   /* construct the frame buffer(s) */if (res == EXIT_SUCCESS) {
-    unsigned int const use_width = width<0 ? 64u : (unsigned int)width;
-    unsigned int const use_height = height<0 ? 64u : (unsigned int)height;
+    unsigned int const use_width = (unsigned int)width;
+    unsigned int const use_height = (unsigned int)height;
     int const resize_err = cb_resize(&framebuffers, 1u);
     if (resize_err != 0) {
       fprintf(stderr, "framebuffer creation error %i\n", resize_err);
