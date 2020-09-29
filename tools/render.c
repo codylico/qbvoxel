@@ -857,6 +857,7 @@ int main(int argc, char **argv) {
   float ambient[3] = {0.f,0.f,0.f};
   float background[3] = {0.f,0.f,0.f};
   unsigned int righthand_tf = 0;
+  int diagnose_tf = 0;
   /* arguments */{
     int help_tf = 0;
     int argi;
@@ -956,6 +957,8 @@ int main(int argc, char **argv) {
             ||  strcmp(argv[argi], "-h") == 0)
         {
           help_tf = 1;
+        } else if (strcmp(argv[argi], "-v") == 0) {
+          diagnose_tf = 1;
         } else {
           fprintf(stderr, "unsupported option \"%s\"\n", argv[argi]);
           res = EXIT_FAILURE;
@@ -991,6 +994,7 @@ int main(int argc, char **argv) {
           "               rotation quaternion\n"
           "  -s (scale)\n"
           "               isotropic scale\n"
+          "  -v           output some diagnostic information\n"
           "  -x (translate)\n"
           "               translate along the x-axis\n"
           "  -y (translate)\n"
@@ -1115,7 +1119,7 @@ int main(int argc, char **argv) {
         /* */{
           float fwd_matrix[16];
           matrix_mult(fwd_matrix, projection, modelview);
-          /* */{
+          /* */if (diagnose_tf) {
             size_t m_i;
             fprintf(stderr, "fwd_matrix = {");
             for (m_i = 0u; m_i < 16; ++m_i) {
@@ -1126,12 +1130,14 @@ int main(int argc, char **argv) {
           /* */{
             int const inv_res = matrix_invert(inv_matrix, fwd_matrix);
             if (inv_res) {
-              size_t m_i;
-              fprintf(stderr, "inv_matrix = {");
-              for (m_i = 0u; m_i < 16; ++m_i) {
-                fprintf(stderr, "%f,", inv_matrix[m_i]);
+              if (diagnose_tf) {
+                size_t m_i;
+                fprintf(stderr, "inv_matrix = {");
+                for (m_i = 0u; m_i < 16; ++m_i) {
+                  fprintf(stderr, "%f,", inv_matrix[m_i]);
+                }
+                fprintf(stderr, "}\n");
               }
-              fprintf(stderr, "}\n");
             } else fprintf(stderr, "invert failed!\n");
           }
         }
@@ -1142,10 +1148,12 @@ int main(int argc, char **argv) {
           if (voxels->width == 0u || voxels->height == 0u
           ||  voxels->depth == 0u)
             continue;
-          fprintf(stderr, "matrices[%lu] = {%ux%ux%u at %i,%i,%i}\n",
-            (long unsigned int)k,
-            voxels->width, voxels->height, voxels->depth,
-            voxels->x, voxels->y, voxels->z);
+          if (diagnose_tf) {
+            fprintf(stderr, "matrices[%lu] = {%ux%ux%u at %i,%i,%i}\n",
+              (long unsigned int)k,
+              voxels->width, voxels->height, voxels->depth,
+              voxels->x, voxels->y, voxels->z);
+          }
           for (j = 0u; j < use_height; ++j) {
             unsigned int i;
             float const y = -(j*hf-1.f);
