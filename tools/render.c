@@ -815,7 +815,7 @@ void pixel_shade
         }
       }
       if (closest < 1.f) { /* light is blocked, compute a shadow */
-        light_power = 0.375f;
+        light_power = (light_power > 0.375f) ? 0.375f : light_power;
       }
     }
   }
