@@ -252,6 +252,7 @@ unsigned long run_crc_png(unsigned long const* table, unsigned long crc,
 /**
  * @brief Generate a lookup table for PNG checksums.
  * @param[out] crc 256-entry table to generate
+ * @note Based on pseudo-code from Appendix 15 of RFC 2083.
  */
 static
 void generate_crc_png(unsigned long* crc);
