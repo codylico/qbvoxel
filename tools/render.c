@@ -15,6 +15,7 @@
 #include <limits.h>
 #include <math.h>
 #include <float.h>
+#include <ctype.h>
 
 
 struct cb_matrix {
@@ -42,6 +43,22 @@ enum box_side {
   BoxSide_YPlus = +2,
   BoxSide_ZMinus = -3,
   BoxSide_ZPlus = +3,
+};
+
+enum output_format {
+  Output_guess = 0,
+  Output_PPM,
+  Output_PNG
+};
+struct png_chunker {
+  unsigned short low_adler;
+  unsigned short high_adler;
+  unsigned short data_pos;
+  unsigned char past_header;
+  unsigned char data_buf[1024];
+  size_t expect_total;
+  size_t expect_index;
+  unsigned long const* crc_table;
 };
 
 static int cb_resize(void* p, unsigned long int n);
@@ -193,6 +210,67 @@ static
 void pixel_shade
   ( float* color, float const* raster_pos, float const* light_pos,
     float const* ambient, float const* normal, struct cb_matrix_array *qma);
+/**
+ * @brief Output a framebuffer to a Portable Pixmap Format file.
+ * @param[out] outf output file stream
+ * @param use_width width of the framebuffer in pixels
+ * @param use_height height of the framebuffer in pixels
+ * @param frame pixel data for the framebuffer
+ */
+static
+void write_to_ppm(FILE* outf, unsigned use_width, unsigned use_height,
+  struct qbvoxel_voxel const* frame);
+/**
+ * @brief Output a framebuffer to a Portable Network Graphics file.
+ * @param[out] outf output file stream
+ * @param use_width width of the framebuffer in pixels
+ * @param use_height height of the framebuffer in pixels
+ * @param frame pixel data for the framebuffer
+ */
+static
+void write_to_png(FILE *outf, unsigned use_width, unsigned use_height,
+  struct qbvoxel_voxel const *frame);
+/**
+ * @brief Encode an unsigned 32-bit integer to a byte array for PNG.
+ * @param b byte array
+ * @param v the unsigned integer
+ */
+static
+void to_u32_png(unsigned char* b, unsigned long int v);
+/**
+ * @brief Update a PNG checksum.
+ * @param table lookup table
+ * @param crc checksum to update
+ * @param data bytes to feed into the checksum
+ * @param n number of bytes to feed
+ * @return updated checksum
+ * @note Based on pseudo-code from Appendix 15 of RFC 2083.
+ */
+static
+unsigned long run_crc_png(unsigned long const* table, unsigned long crc,
+  unsigned char const* data, size_t n);
+/**
+ * @brief Generate a lookup table for PNG checksums.
+ * @param[out] crc 256-entry table to generate
+ * @note Based on pseudo-code from Appendix 15 of RFC 2083.
+ */
+static
+void generate_crc_png(unsigned long* crc);
+/**
+ * @brief Chunk PNG data together for output.
+ * @param png tracking structure
+ * @param[out] f output stream
+ * @param v next byte to write
+ */
+static
+void idat_chunk_png(struct png_chunker* png, FILE* f, unsigned char v);
+/**
+ * @brief Post the Adler32 checksum.
+ * @param png tracking structure
+ * @param[out] f output stream
+ */
+static
+void idat_adler_png(struct png_chunker* png, FILE* f);
 
 static
 int pull_float_args(float* dst, int n, int*argi, int argc, char **argv);
@@ -803,7 +881,7 @@ void pixel_shade
           raster_pos[2] + 0.015625*light_dir[2],
         };
       for (k = 0u; k < qma->count; ++k) {
-        float tmp_shade_color[3];
+        float tmp_shade_color[4];
         float tmp_shade_normal[3];
         float t = trace_ray
           ( tmp_shade_color, tmp_shade_normal, qma->matrices+k,
@@ -832,10 +910,157 @@ void pixel_shade
 }
 
 
+void to_u32_png(unsigned char* dst, unsigned long int val) {
+  for (int i = 3; i >= 0; --i) {
+    dst[i] = (unsigned char)(val&255u);
+    val >>= 8;
+  }
+  return;
+}
+unsigned long run_crc_png(unsigned long const* table, unsigned long crc,
+  unsigned char const* data, size_t n)
+{
+  size_t i;
+  for (i = 0; i < n; ++i) {
+    crc = (crc>>8) ^ table[(crc ^ data[i])&255u];
+  }
+  return crc;
+}
+void idat_chunk_png(struct png_chunker* png, FILE* f, unsigned char v) {
+  unsigned short const adler_wrap = 65521u;
+  png->low_adler = (png->low_adler+v)%adler_wrap;
+  png->high_adler = (png->high_adler+png->low_adler)%adler_wrap;
+  png->data_buf[png->data_pos++] = v;
+  png->expect_index += 1;
+  if (png->data_pos >= sizeof(png->data_buf)
+  ||  png->expect_index >= png->expect_total)
+  {
+    unsigned long crc = 0xca50f9e1;
+    int const at_end = (png->expect_index >= png->expect_total);
+    unsigned char idat[8] = {0,0,0,0, 0x49,0x44,0x41,0x54};
+    unsigned char zlib_block[7] = {0};
+    unsigned char num_buf[4] = {0};
+    static unsigned char const zlib_start[2] = {8,29};
+    /* avoid counting Adler32 as part of "compressed" data */
+    unsigned short real_data_count = png->data_pos;
+    unsigned long idat_size = png->data_pos;
+    size_t const remaining = png->expect_total - png->expect_index;
+    if (remaining < 4) {
+      real_data_count = (real_data_count > 4)
+        ? real_data_count-(4 - remaining) : 0;
+    }
+    /* generate zlib block header */
+    if (!png->past_header) {
+      crc = run_crc_png(png->crc_table, crc, zlib_start, sizeof(zlib_start));
+      idat_size += sizeof(zlib_start);
+    }
+    if (real_data_count > 0) {
+      zlib_block[0] = (unsigned char)at_end;
+      qbvoxel_api_to_u32(zlib_block+1, real_data_count);
+      qbvoxel_api_to_u32(zlib_block+3, ~real_data_count);
+      crc = run_crc_png(png->crc_table, crc, zlib_block, 5);
+      idat_size += 5;
+    }
+    /* write to output */
+    to_u32_png(idat, idat_size);
+    fwrite(idat, sizeof(char), sizeof(idat), f);
+    if (!png->past_header) {
+      fwrite(zlib_start, sizeof(char), 2, f);
+      png->past_header = 1;
+    }
+    if (real_data_count > 0)
+      fwrite(zlib_block, sizeof(char), 5, f);
+    crc = run_crc_png(png->crc_table, crc, png->data_buf, png->data_pos);
+    fwrite(png->data_buf, sizeof(char), png->data_pos, f);
+    to_u32_png(num_buf, crc^0xFFffFFff);
+    fwrite(num_buf, sizeof(char), sizeof(num_buf), f);
+    png->data_pos = 0;
+  }
+}
+void idat_adler_png(struct png_chunker* png, FILE* f) {
+  unsigned char num_buf[4] = {0};
+  unsigned long const adler32 =
+    ((unsigned long)png->high_adler<<16) | png->low_adler;
+  int i;
+  to_u32_png(num_buf, adler32);
+  for (i = 0; i < 4; ++i)
+    idat_chunk_png(png, f, num_buf[i]);
+  return;
+}
 
+void write_to_ppm(FILE* outf, unsigned use_width, unsigned use_height,
+  struct qbvoxel_voxel const* frame)
+{
+  unsigned int j;
+  fprintf(outf, "P3 %u %u 255\n", use_width, use_height);
+  for (j = 0u; j < use_height; ++j) {
+    unsigned int i;
+    for (i = 0u; i < use_width; ++i) {
+      struct qbvoxel_voxel const vx = frame[i + j*use_width];
+      fprintf(outf, "%u %u %u\n", vx.r, vx.g, vx.b);
+    }
+  }
+  return;
+}
+void write_to_png(FILE* outf, unsigned use_width, unsigned use_height,
+  struct qbvoxel_voxel const* frame)
+{
+  static unsigned char signature[8] = {137,80,78,71,13,10,26,10};
+  unsigned char header[17] = {0x49,0x48,0x44,0x52,
+    0,0,0,0,  0,0,0,0,  8, 2, 0, 0, 0};
+  unsigned char num_buf[4] = {0};
+  static unsigned char const end[12] = {0,0,0,0, 0x49,0x45,0x4E,0x44, 0xAE,0x42,0x60,0x82};
+  struct png_chunker png = {1};
+  unsigned j;
+  /* generate CRC table */
+  unsigned long crc_table[256] = {0};
+  generate_crc_png(crc_table);
+  png.crc_table = crc_table;
+  /* write the signature */
+  fwrite(signature, sizeof(char), sizeof(signature), outf);
+  /* write the header */
+  to_u32_png(header+4, use_width);
+  to_u32_png(header+8, use_height);
+  {
+    unsigned long header_crc = run_crc_png(crc_table, 0xFFffFFff, header, sizeof(header));
+    to_u32_png(num_buf, sizeof(header)-4);
+    fwrite(num_buf, sizeof(char), sizeof(num_buf), outf);
+    fwrite(header, sizeof(char), sizeof(header), outf);
+    to_u32_png(num_buf, header_crc^0xFFffFFff);
+    fwrite(num_buf, sizeof(char), sizeof(num_buf), outf);
+  }
+  /* write the data */
+  png.expect_total = use_height*(use_width*(size_t)3u+1u)+4u;
+  for (j = 0; j < use_height; ++j) {
+    unsigned int i;
+    /* output null filter */
+    idat_chunk_png(&png, outf, 0);
+    for (i = 0; i < use_width; ++i) {
+      struct qbvoxel_voxel const vx = frame[i + j*use_width];
+      idat_chunk_png(&png, outf, vx.r);
+      idat_chunk_png(&png, outf, vx.g);
+      idat_chunk_png(&png, outf, vx.b);
+    }
+  }
+  idat_adler_png(&png, outf);
+  /* write the end */
+  fwrite(end, sizeof(char), sizeof(end), outf);
+  return;
+}
 
-
-
+void generate_crc_png(unsigned long* crc) {
+  int i;
+  for (i = 0; i < 256; ++i) {
+    unsigned long base = i;
+    int bit;
+    for (bit = 0; bit < 8; ++bit) {
+      unsigned long const xor = (base & 1u) ? 0xedb88320ul : 0;
+      base = xor^(base >> 1);
+    }
+    crc[i] = base;
+  }
+  return;
+}
 
 int main(int argc, char **argv) {
   struct cb_matrix_array qma = {0};
@@ -858,6 +1083,7 @@ int main(int argc, char **argv) {
   float background[3] = {0.f,0.f,0.f};
   unsigned int righthand_tf = 0;
   int diagnose_tf = 0;
+  enum output_format out_form = Output_guess;
   /* arguments */{
     int help_tf = 0;
     int argi;
@@ -915,6 +1141,10 @@ int main(int argc, char **argv) {
           }
         } else if (strcmp(argv[argi], "-l") == 0) {
           res = pull_float_args(light_pos, 3, &argi, argc, argv);
+        } else if (strcmp(argv[argi], "--ppm") == 0) {
+          out_form = Output_PPM;
+        } else if (strcmp(argv[argi], "--png") == 0) {
+          out_form = Output_PNG;
         } else if (strcmp(argv[argi], "-a") == 0) {
           res = pull_float_args(ambient, 3, &argi, argc, argv);
         } else if (strcmp(argv[argi], "-b") == 0) {
@@ -973,7 +1203,7 @@ int main(int argc, char **argv) {
       }
     }
     if (help_tf) {
-      fputs("usage: ./qbvoxel_churn [options] (infile) (outfile)\n\n"
+      fputs("usage: ./qbvoxel_render [options] (infile) (outfile)\n\n"
           "arguments:\n"
           "  (infile)     input file\n"
           "  (outfile)    output file\n\n"
@@ -990,6 +1220,10 @@ int main(int argc, char **argv) {
           "               set width and height of output image\n"
           "  -l (x) (y) (z)\n"
           "               position the light\n"
+          "  --png\n"
+          "               force PNG output\n"
+          "  --ppm\n"
+          "               force PPM output\n"
           "  -q (x) (y) (z) (w)\n"
           "               rotation quaternion\n"
           "  -s (scale)\n"
@@ -1206,17 +1440,27 @@ int main(int argc, char **argv) {
       perror("can not open file");
       res = EXIT_FAILURE;
     } else /* generate */ {
-      unsigned int const use_width = framebuffers.matrices[0].width;
-      unsigned int const use_height = framebuffers.matrices[0].height;
-      unsigned int j;
-      struct qbvoxel_voxel *const frame = framebuffers.matrices[0].data;
-      fprintf(outf, "P3 %u %u 255\n", use_width, use_height);
-      for (j = 0u; j < use_height; ++j) {
-        unsigned int i;
-        for (i = 0u; i < use_width; ++i) {
-          struct qbvoxel_voxel const vx = frame[i + j*use_width];
-          fprintf(outf, "%u %u %u\n", vx.r, vx.g, vx.b);
+      if (out_form == Output_guess && out_filename) {
+        /* guess the desired format */
+        size_t const len = strlen(out_filename);
+        char suffix[5] = {'\0'};
+        if (len > 4) {
+          size_t suffix_i;
+          for (suffix_i = 0; suffix_i < 4; ++suffix_i)
+            suffix[suffix_i] = tolower(out_filename[len-4+suffix_i]&255u);
         }
+        if (strncmp(suffix,".png",sizeof(suffix)) == 0)
+          out_form = Output_PNG;
+      }
+      switch (out_form) {
+      case Output_PNG:
+        write_to_png(outf, framebuffers.matrices[0].width,
+          framebuffers.matrices[0].height, framebuffers.matrices[0].data);
+        break;
+      default:
+        write_to_ppm(outf, framebuffers.matrices[0].width,
+          framebuffers.matrices[0].height, framebuffers.matrices[0].data);
+        break;
       }
     }
     if (outf != NULL && outf != stdout)
