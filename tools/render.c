@@ -881,7 +881,7 @@ void pixel_shade
           raster_pos[2] + 0.015625*light_dir[2],
         };
       for (k = 0u; k < qma->count; ++k) {
-        float tmp_shade_color[3];
+        float tmp_shade_color[4];
         float tmp_shade_normal[3];
         float t = trace_ray
           ( tmp_shade_color, tmp_shade_normal, qma->matrices+k,
